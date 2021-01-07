@@ -29,7 +29,7 @@ eva=eval7.evaluate([eval7.Card("As"),eval7.Card("2s"),eval7.Card("3s"),eval7.Car
  
 '''
 The next calculates the UN-conditional probability for winning in all pairs (we
-did not distingu)ish roal flush and straight flush: they are truly super rare
+did not distinguish roal flush and straight flush: they are truly super rare
 '''
 
 import json

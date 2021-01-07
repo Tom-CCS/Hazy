@@ -12,6 +12,9 @@ import random
 import json
 
 PROBAILITIES={}
+filename="raw_prob.json"
+with open(filename,'r') as load_f:
+    PROBAILITIES = json.load(load_f)
 
 #The winning probabilities for RAW first two cards,
 #calculated OUTSIDE this program and stored in prob.json file.
@@ -98,6 +101,7 @@ class Player(Bot):
             shown_cards: the number of cards shown
         Return: the probability of winning
         '''
+        pass
 
     def handle_new_round(self, game_state, round_state, active):
         '''
