@@ -1,0 +1,93 @@
+Ideas for 2021 Pokerbots\
+
+Static evaluation: https://github.com/danielpaz6/Poker-Hand-Evaluator
+Resources: https://github.com/moodule/awesome-poker
+CFR: https://github.com/fedden/poker_ai
+Evaluator: https://www.codeproject.com/Articles/12279/Fast-Texas-Holdem-Hand-Evaluation-and-Analysis
+https://github.com/julianandrews/pyeval7
+
+
+
+
+Trivial Strategy
+Raise if has pair, doesn’t raise otherwise
+Learning opponents strategy
+
+Two strategies with only self-considering:
+Probability calculating. The main idea is to calculate the conditional probability of myself winning the others, based on the others having cards randomly chosen from the cards not appearing. First, set up thresholds f3, f4, f5 and r3, r4, r5.
+1a. Unconditionally check to see the first three cards.
+1b. Calculate the probability of winning, say the probability to be p.
+1c. Let n be the number of cards appeared on the desk. If the probability for the winning is smaller than fn, fold. If greater than rn, raise the money with 1.
+Worth calculating. The main idea is to calculate the worth of the cards I have, and if it is worthy to take in, we bet. First, evaluate for each card type a number, and for each round we do the followings:
+2a. Unconditionally check to see the first three cards.
+2b. Calculate the increment of the worth and the amount the opponent raises. If the increment of worth is smaller than the amount the opponent raises, fold. Or else, check. If the delta of worth is far higher, raise the money with 1.
+Splitting strategies:
+Pairs go to the high board, make the higher cards go to the higher board.
+A not so greedy method. If the card is not so good, small pairs go to the medium and lowest board, and give away two worst cards to the highest board, fold them at once.
+
+
+
+
+
+
+
+
+
+
+
+
+Modules:
+
+1. Probability
+*raw_prob()
+Input: Two initial cards
+Output: Probability of winning
+-> Precomputed Table, Completed
+
+*calc_prob()
+Input: *card of myself, *cards in street, guessing of opponents
+# first week it is hard to calculate the guessing of the opponent’s card, so basically, we only depend on the card in the street
+Output: the probability of winning, condition on:
+my card, and the card of the street shown 
+The not-shown street cards are uniformly distributed.
+the opponent’s cards are uniformly distributed in the other cards. (Algo: monte carlo)
+# If we have implemented guessing, we assume the cards are uniformly distributed in the guessings(or some other distribution)
+
+2.Initial distribution of Cards
+
+allocate_card()
+Input: 6 initial cards
+Output: 3 pairs of cards, indicating which goes on the small, medium, and large table
+
+3.Algorithm given probability
+raise()
+Input: 
+prob_of_win (calculated by calc_prob), my pot, total pot, last raise, and other parameters if needed
+Output:
+An integer:
+-1 is fold; 0 is call; n(a positive integer) is raise
+
+Plus the main methods
+handle_new_round
+handle_round_over
+get_actions
+
+
+Further “modules”:
+
+1. guessing the opponent’s card
+e.g. shrink the range, and even give weight to different possible pairs of card
+
+2. Intimidate (at a prob param)
+e.g. We can raise high on some circumstances, not too often.
+(strongly useful when:
+The pot is not so small, even big
+The street cards can be really close to some big hands (eg. straight, flush, full house) 
+
+3. Classify betting style of opponent
+
+e.g. When the enemy is timid, we could use intimidate more often.
+
+4. Hiding yourself.
+
+5. CFR(counterfactual regret minimization)
