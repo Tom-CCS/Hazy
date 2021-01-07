@@ -7,6 +7,14 @@ from skeleton.states import NUM_ROUNDS, STARTING_STACK, BIG_BLIND, SMALL_BLIND, 
 from skeleton.bot import Bot
 from skeleton.runner import parse_args, run_bot
 
+import eval7
+import random
+import json
+
+PROBAILITIES={}
+
+#The winning probabilities for RAW first two cards,
+#calculated OUTSIDE this program and stored in prob.json file.
 
 class Player(Bot):
     '''
@@ -23,11 +31,73 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
+        self.board_allocations=[[],[],[]]#The board allocation for three boards
+        self.play_high_thres=0.8 #The probability threshold to make it dare in high
+        #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
     
+    def raw_prob(self, card1, card2):
+        '''
+        Parameters: two cards, card1 and card2
+        Return the raw probability of winning of two cards
+        '''
+        num1,num2=card1[0],card2[0]
+        suit1,suit2=card1[1],card2[1]
+        if num1==num2:
+            return PROBAILITIES[num1+num2]
+        else:
+            s1=num1+num2+"s" if suit1==suit2 else num1+num2+"u"
+            s2=num2+num1+"s" if suit1==suit2 else num2+num1+"u"
+            if s1 not in PROBAILITIES.keys():
+                return PROBAILITIES[s2]
+            return PROBAILITIES[s1]
+            
+        
     def allocate_cards(self, my_cards):
-        pass
-
+        '''
+        Parameters:
+        my_cards: 
+            A list of strings 6 cards of [2-9TJQKA][cdhs].
+            It represent the first six cards
+        Returns:
+        None.
+        '''
+        max_prob=0
+        best=[]#Best pair
+        for i in range(2*NUM_BOARDS-1):
+            for j in range(i+1,2*NUM_BOARDS):
+                if self.raw_prob(my_cards[i],my_cards[j])>max_prob:
+                    best=[my_cards[i],my_cards[j]]
+        
+        rest=[]
+        for card in my_cards:
+            if card not in best: rest.append(card)
+        
+        second_max_prob=0
+        second_best=[]#Second best pair
+        for i in range(2*NUM_BOARDS-3):
+            for j in range(i+1,2*NUM_BOARDS-2):
+                if self.raw_prob(my_cards[i],my_cards[j])>second_max_prob:
+                    second_best=[my_cards[i],my_cards[j]]
+        
+        worst=[]
+        for card in rest:
+            if card not in second_best: worst.append(card)
+        
+        if max_prob>self.play_high_thres:# We can have a really good card
+            self.board_allocations=[worst, second_best, best]
+        elif max_prob>self.play_high_thres:# We can get a fair pair
+            self.board_allocations=[second_best, best, worst]
+        else:# We have really bad luck
+            self.board_allocations=[best, worst, second_best]
+            
+    def calc_prob(self, i, shown_cards):
+        '''
+        Parameters:
+            i: The ith board (i=0,1,2)
+            shown_cards: the number of cards shown
+        Return: the probability of winning
+        '''
 
     def handle_new_round(self, game_state, round_state, active):
         '''
@@ -41,12 +111,12 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
-        #my_bankroll = game_state.bankroll  # the total number of chips you've gained or lost from the beginning of the game to the start of this round
-        #opp_bankroll = game_state.opp_bankroll # ^but for your opponent
-        #game_clock = game_state.game_clock  # the total number of seconds your bot has left to play this game
-        #round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
-        #my_cards = round_state.hands[active]  # your six cards at teh start of the round
-        #big_blind = bool(active)  # True if you are the big blind
+        my_bankroll = game_state.bankroll  # the total number of chips you've gained or lost from the beginning of the game to the start of this round
+        opp_bankroll = game_state.opp_bankroll # ^but for your opponent
+        game_clock = game_state.game_clock  # the total number of seconds your bot has left to play this game
+        round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
+        my_cards = round_state.hands[active]  # your six cards at teh start of the round
+        big_blind = bool(active)  # True if you are the big blind
         pass
 
     def handle_round_over(self, game_state, terminal_state, active):
@@ -61,14 +131,14 @@ class Player(Bot):
         Returns:
         Nothing.
         '''
-        # my_delta = terminal_state.deltas[active]  # your bankroll change from this round
-        # opp_delta = terminal_state.deltas[1-active] # your opponent's bankroll change from this round 
-        # previous_state = terminal_state.previous_state  # RoundState before payoffs
-        # street = previous_state.street  # 0, 3, 4, or 5 representing when this round ended
-        # for terminal_board_state in previous_state.board_states:
-        #     previous_board_state = terminal_board_state.previous_state
-        #     my_cards = previous_board_state.hands[active]  # your cards
-        #     opp_cards = previous_board_state.hands[1-active]  # opponent's cards or [] if not revealed
+        my_delta = terminal_state.deltas[active]  # your bankroll change from this round
+        opp_delta = terminal_state.deltas[1-active] # your opponent's bankroll change from this round 
+        previous_state = terminal_state.previous_state  # RoundState before payoffs
+        street = previous_state.street  # 0, 3, 4, or 5 representing when this round ended
+        for terminal_board_state in previous_state.board_states:
+            previous_board_state = terminal_board_state.previous_state
+            my_cards = previous_board_state.hands[active]  # your cards
+            opp_cards = previous_board_state.hands[1-active]  # opponent's cards or [] if not revealed
         pass
 
     def get_actions(self, game_state, round_state, active):
@@ -85,28 +155,30 @@ class Player(Bot):
         Your actions.
         '''
         legal_actions = round_state.legal_actions()  # the actions you are allowed to take
-        # street = round_state.street  # 0, 3, 4, or 5 representing pre-flop, flop, turn, or river respectively
+        street = round_state.street  # 0, 3, 4, or 5 representing pre-flop, flop, turn, or river respectively
         my_cards = round_state.hands[active]  # your cards across all boards
-        # board_cards = [board_state.deck if isinstance(board_state, BoardState) else board_state.previous_state.deck for board_state in round_state.board_states] #the board cards
-        # my_pips = [board_state.pips[active] if isinstance(board_state, BoardState) else 0 for board_state in round_state.board_states] # the number of chips you have contributed to the pot on each board this round of betting
-        # opp_pips = [board_state.pips[1-active] if isinstance(board_state, BoardState) else 0 for board_state in round_state.board_states] # the number of chips your opponent has contributed to the pot on each board this round of betting
-        # continue_cost = [opp_pips[i] - my_pips[i] for i in range(NUM_BOARDS)] #the number of chips needed to stay in each board's pot
-        # my_stack = round_state.stacks[active]  # the number of chips you have remaining
-        # opp_stack = round_state.stacks[1-active]  # the number of chips your opponent has remaining
-        # stacks = [my_stack, opp_stack]
-        # net_upper_raise_bound = round_state.raise_bounds()[1] # max raise across 3 boards
-        # net_cost = 0 # keep track of the net additional amount you are spending across boards this round
+        board_cards = [board_state.deck if isinstance(board_state, BoardState) else board_state.previous_state.deck for board_state in round_state.board_states] #the board cards
+        my_pips = [board_state.pips[active] if isinstance(board_state, BoardState) else 0 for board_state in round_state.board_states] # the number of chips you have contributed to the pot on each board this round of betting
+        opp_pips = [board_state.pips[1-active] if isinstance(board_state, BoardState) else 0 for board_state in round_state.board_states] # the number of chips your opponent has contributed to the pot on each board this round of betting
+        continue_cost = [opp_pips[i] - my_pips[i] for i in range(NUM_BOARDS)] #the number of chips needed to stay in each board's pot
+        my_stack = round_state.stacks[active]  # the number of chips you have remaining
+        opp_stack = round_state.stacks[1-active]  # the number of chips your opponent has remaining
+        stacks = [my_stack, opp_stack]
+        net_upper_raise_bound = round_state.raise_bounds()[1] # max raise across 3 boards
+        net_cost = 0 # keep track of the net additional amount you are spending across boards this round
         my_actions = [None] * NUM_BOARDS
         for i in range(NUM_BOARDS):
-            if AssignAction in legal_actions[i]:
-                cards = [my_cards[2*i], my_cards[2*i+1]]
-                my_actions[i] = AssignAction(cards)
+            if AssignAction in legal_actions[i]: # This indicates it is the allocating round
+                #cards = [my_cards[2*i], my_cards[2*i+1]]
+                #my_actions[i] = AssignAction(cards)
+                pass
             elif CheckAction in legal_actions[i]:  # check-call
                 my_actions[i] = CheckAction()
             else:
                 my_actions[i] = CallAction()
         return my_actions
 
+"""
 def magnitude(cards):
     '''
     Parameter: 
@@ -230,7 +302,7 @@ def is_flush(cards):
             if card[1]!=suit:
                 return False
     return True
-
+"""
 
 if __name__ == '__main__':
     run_bot(Player(), parse_args())
