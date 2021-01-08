@@ -29,7 +29,7 @@ def raw_prob(card1, card2):
 def calc_prob(cards, common_cards, guessing_opponent=None):
     '''
     Parameters:
-        cards: The list (of length 2) of different Cards
+        cards: The list (of length 2) of different strings
             indicates the cards we have
         shown_cards: A list of different Cards, length being 0,3,4,5
             indicates the cards to be shown
@@ -41,17 +41,18 @@ def calc_prob(cards, common_cards, guessing_opponent=None):
     distibuted 
     '''
     if len(common_cards)==0:# same as above, we are blind
-        return raw_prob(str(cards[0]),str(cards[1]))
+        return raw_prob(cards[0],cards[1])
     
     elif len(common_cards)==5: 
     #If we calculate the exact probability for 5 cards, it will eat up <0.002s
         deck=eval7.Deck()
-        for card in cards+common_cards:
-            deck.cards.remove(eval7.Card(str(card)))
+        Card_cards=[eval7.Card(cards[0]),eval7.Card(cards[1])]
+        for card in Card_cards+common_cards:
+            deck.cards.remove(card)
         score = 0
         for i in range(len(deck)-1):
             for j in range(i+1,len(deck)):
-                score+=win_or_lose(cards, common_cards, [deck[i],deck[j]])
+                score+=win_or_lose(Card_cards, common_cards, [deck[i],deck[j]])
         return score / (44*45) #this is our win probability!
     
     #elif len(common_cards)==4: 
@@ -72,14 +73,15 @@ def calc_prob(cards, common_cards, guessing_opponent=None):
     # do delete the len(common_cards)==4 case above.
     # 1000 iterations will cost up to ~0.021s. If you find it slow, please lower it.
         deck=eval7.Deck()
-        for card in cards+common_cards:
-            deck.cards.remove(eval7.Card(str(card)))
+        Card_cards=[eval7.Card(cards[0]),eval7.Card(cards[1])]
+        for card in Card_cards+common_cards:
+            deck.cards.remove(card)
             #print(card)
             #print(type(card))
         score = 0
         iteration = 100# The iteration
         for i in range(iteration):
-            score+=win_or_lose(cards, common_cards, opponent_hand=[], rest=deck)
+            score+=win_or_lose(Card_cards, common_cards, opponent_hand=[], rest=deck)
         return score/(2*iteration)
             
             
@@ -139,3 +141,5 @@ calc_prob([Kc,Kd],[Kh,Td,Ks])
 ED=time.time()
 print(ED-ST)
 '''
+
+calc_prob(["Js","Ts"],[eval7.Card("4d"),eval7.Card("3d"),eval7.Card("6s")])

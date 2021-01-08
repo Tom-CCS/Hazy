@@ -3,14 +3,12 @@ import eval7
 def allocate(my_cards):
     """
     Parameters:
-    cards: a list of 6 cards
+    cards: a list of 6 strings of [2-9TJQKA][cdhs]
 
     Returns:
-        3 pairs of cards, determining how we would allocate our hand
+        3 pairs of strings
+        deterine how we would allocate our hand
         plus other related parameters
-    """
-    """
-    Parameters
     """
     NUM_BOARDS = 3
     PLAY_HIGH_THRES = 0.6
@@ -39,7 +37,7 @@ def allocate(my_cards):
     
     worst=[]
     for card in rest:
-        if card not in second_best: worst.append(eval7.Card(str(card)))
+        if card not in second_best: worst.append(card)
         
     if max_prob>PLAY_HIGH_THRES:# We can have a really good card
         return [worst, second_best, best], 2

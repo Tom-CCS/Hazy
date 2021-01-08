@@ -65,12 +65,12 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.8, RAISE_PROB=1.0, RAISE_DEC
         if raise_range[0] > raise_range[1]:
             raise_amount = 0
         else:
-            raise_amount = my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost) * 0.75
+            raise_amount = my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost) * 0.4
             if win_prob > 0.7:
                 raise_amount += RAISE_RATIO * (current_pot + continue_cost) * 0.75
             raise_amount = (int)(raise_amount)
-            raise_amount = min(raise_amount, raise_range[1])
-            raise_amount = max(raise_amount, raise_range[0])
+            truncated_raise_amount = min(raise_amount, raise_range[1])
+            truncated_raise_amount = max(raise_amount, raise_range[0])
         
         #the opponent just raised
         if continue_cost > 0:
@@ -82,8 +82,8 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.8, RAISE_PROB=1.0, RAISE_DEC
             #we still have positive gain, decide if to raise
             else:
                 #if our hand is good enough, raise, else fold
-                if win_prob > RAISE_THRES and random.random() < win_prob:
-                    return raise_amount
+                if win_prob > RAISE_THRES and random.random() < win_prob and raise_amount > raise_range[0]:
+                    return truncated_raise_amount
                 else:
                     return 0
         #the opponent did not just raise. we have control.

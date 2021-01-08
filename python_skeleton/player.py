@@ -39,7 +39,7 @@ class Player(Bot):
         Nothing.
         '''
         self.board_allocations=[[],[],[]]#The board allocation for three boards
-        self.folding_high=0
+        self.playing=[]
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
         
@@ -52,17 +52,12 @@ class Player(Bot):
         Returns:
         None.
         '''
-        self.board_allocations, self.folding_high = allocate(my_cards)
+        self.board_allocations, index = allocate(my_cards)
+        #print(self.board_allocations)
+        if index==2: self.playing=[1,1,1]
+        if index==1: self.playing=[1,1,0]
+        if index==0: self.playing=[1,0,0]
             
-    def calc_prob(self, i, shown_cards):
-        '''
-        Parameters:
-            i: The ith board (i=0,1,2)
-            shown_cards: the number of cards shown
-        Return: the probability of winning
-        '''
-        pass
-
     def handle_new_round(self, game_state, round_state, active):
         '''
         Called when a new round starts. Called NUM_ROUNDS times.
@@ -146,8 +141,7 @@ class Player(Bot):
             
             if AssignAction in legal_actions[i]: # This indicates it is the allocating round
                 cards = self.board_allocations[i] #allocate our cards that we made earlier
-                str_cards=[str(cards[0]),str(cards[1])]
-                my_actions[i] = AssignAction(str_cards) #add to our actions
+                my_actions[i] = AssignAction(cards) #add to our actions
                 
             elif isinstance(round_state.board_states[i], TerminalState): #make sure the game isn't over at this board
                 my_actions[i] = CheckAction() #check if it is
@@ -155,22 +149,25 @@ class Player(Bot):
             else:
                 #do we add more resources?
                 #forfeit tables that could not be won
-                if i>self.folding_high:
-                    my_actions[i]=FoldAction()
-                    total_raise_reserve += continue_cost[i]
-                    
+                if self.playing[i]==0:
+                    if FoldAction in legal_actions[i]:
+                        my_actions[i]=FoldAction()
+                        total_raise_reserve += continue_cost[i]
+                    else:
+                        my_actions[i]=CheckAction()
                 else:
                     board_cont_cost = continue_cost[i] #we need to pay this to keep playing
                     board_total = round_state.board_states[i].pot #amount before we started betting
                     pot_total = my_pips[i] + opp_pips[i] + board_total #total money in the pot right now
                     min_raise, max_raise = round_state.board_states[i].raise_bounds(active, round_state.stacks)
                     
-                    print(min_raise,max_raise,board_cont_cost)
+                    #print(min_raise,max_raise,board_cont_cost)
                     #print("board_cards : ",board_cards)
                     seen_cards=[]
                     for card in board_cards[i]:
                         if card!='':
                             seen_cards.append(eval7.Card(card))
+                    #print(self.board_allocations[i])
                     #print(seen_cards)
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
                     algo=algorithm(RAISE_RATIO=0.2)
