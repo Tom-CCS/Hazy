@@ -53,7 +53,7 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
         #as the opponent's hand might be very good
         if continue_cost > intimidate_guess:
             if random.random() < INTIMIDATE_PROB:
-                win_prob *= 2**(continue_cost/40)
+                win_prob *= 2**(-continue_cost/40)
         #decrease win_prob if opponent just raised
         #as the opponent might have a good hand
         elif continue_cost > 0:
