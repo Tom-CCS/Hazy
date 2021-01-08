@@ -154,6 +154,7 @@ class Player(Bot):
         legal_actions = round_state.legal_actions()  # the actions you are allowed to take
         street = round_state.street  # 0, 3, 4, or 5 representing pre-flop, flop, turn, or river respectively
         my_cards = round_state.hands[active]  # your cards across all boards
+        # the card has a type str
         board_cards = [board_state.deck if isinstance(board_state, BoardState) else board_state.previous_state.deck for board_state in round_state.board_states] #the board cards
         my_pips = [board_state.pips[active] if isinstance(board_state, BoardState) else 0 for board_state in round_state.board_states] # the number of chips you have contributed to the pot on each board this round of betting
         opp_pips = [board_state.pips[1-active] if isinstance(board_state, BoardState) else 0 for board_state in round_state.board_states] # the number of chips your opponent has contributed to the pot on each board this round of betting
@@ -184,7 +185,7 @@ class Player(Bot):
                 seen_cards=[]
                 for card in board_cards[i]:
                     if card!='':
-                        seen_cards.append(eval7.Card(str(card)))
+                        seen_cards.append(eval7.Card(card))
                 #print(seen_cards)
                 win_prob=calc_prob(self.board_allocations[i],seen_cards)
                 algo=algorithm()
@@ -208,8 +209,12 @@ class Player(Bot):
                     my_actions[i] = CallAction()
                     commit_cost = board_cont_cost #the cost to call is board_cont_cost
                 
-                else: #checking is our only valid move here
+                elif CheckAction in legal_actions[i] and raise_ammount >=0: #checking is our only valid move here
                     my_actions[i] = CheckAction()
+                    commit_cost = 0
+                
+                else:
+                    my_actions[i] = FoldAction()
                     commit_cost = 0
                     
                 '''
