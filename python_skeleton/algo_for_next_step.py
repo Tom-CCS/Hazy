@@ -1,6 +1,6 @@
 import eval7
 import random
-def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.8, RAISE_PROB=1.0, RAISE_DEC=1.0, RAISE_THRES=0.5, RAISE_RATIO=0.75):
+def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC=1.0, RAISE_THRES=0.5, RAISE_RATIO=0.75):
     '''
     Parameters:
         INTIMIDATE_PROB: a float in [0,1]. Set to 1.0.

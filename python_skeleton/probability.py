@@ -142,4 +142,4 @@ ED=time.time()
 print(ED-ST)
 '''
 
-calc_prob(["Js","Ts"],[eval7.Card("4d"),eval7.Card("3d"),eval7.Card("6s")])
+calc_prob(["4c","4d"],[eval7.Card("8s"),eval7.Card("3h"),eval7.Card("Ts"),eval7.Card("8d")])
