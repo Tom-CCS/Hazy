@@ -206,7 +206,7 @@ class Player(Bot):
                             seen_cards.append(eval7.Card(card))
                     #print(seen_cards)
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
-                    algo=algorithm(RAISE_RATIO=0.5)
+                    algo=algorithm(RAISE_RATIO=0.2)
                     raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, max_raise))
                     
                     #if street < 3: #pre-flop
