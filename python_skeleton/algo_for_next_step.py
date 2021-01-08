@@ -1,6 +1,6 @@
 import eval7
 import random
-def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC=1.0, RAISE_THRES=0.5, RAISE_RATIO=0.75):
+def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.8, RAISE_PROB=1.0, RAISE_DEC=1.0, RAISE_THRES=0.5, RAISE_RATIO=0.75):
     '''
     Parameters:
         INTIMIDATE_PROB: a float in [0,1]. Set to 1.0.
@@ -65,7 +65,10 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
         if raise_range[0] > raise_range[1]:
             raise_amount = 0
         else:
-            raise_amount = (int)(my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost))
+            raise_amount = my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost) * 0.75
+            if win_prob > 0.7:
+                raise_amount += RAISE_RATIO * (current_pot + continue_cost) * 0.75
+            raise_amount = (int)(raise_amount)
             raise_amount = min(raise_amount, raise_range[1])
             raise_amount = max(raise_amount, raise_range[0])
         
