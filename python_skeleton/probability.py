@@ -77,7 +77,7 @@ def calc_prob(cards, common_cards, guessing_opponent=None):
             #print(card)
             #print(type(card))
         score = 0
-        iteration = 350# The iteration
+        iteration = 100# The iteration
         for i in range(iteration):
             score+=win_or_lose(cards, common_cards, opponent_hand=[], rest=deck)
         return score/(2*iteration)
