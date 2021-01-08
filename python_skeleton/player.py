@@ -178,6 +178,8 @@ class Player(Bot):
         net_upper_raise_bound = round_state.raise_bounds()[1] # max raise across 3 boards
         net_cost = 0 # keep track of the net additional amount you are spending across boards this round
         my_actions = [None] * NUM_BOARDS
+        total_cont_cost = sum(continue_cost) # the minimum number of chips to keep playing at all the tables
+        total_raise_reserve = my_stack - total_cont_cost
         for i in range(NUM_BOARDS):
             
             if AssignAction in legal_actions[i]: # This indicates it is the allocating round
@@ -188,9 +190,12 @@ class Player(Bot):
             elif isinstance(round_state.board_states[i], TerminalState): #make sure the game isn't over at this board
                 my_actions[i] = CheckAction() #check if it is
             
-            else: #do we add more resources?
+            else:
+                #do we add more resources?
+                #forfeit tables that could not be won
                 if i>self.folding_high:
                     my_actions[i]=FoldAction()
+                    total_raise_reserve += continue_cost[i]
                     
                 else:
                     board_cont_cost = continue_cost[i] #we need to pay this to keep playing
@@ -207,21 +212,13 @@ class Player(Bot):
                     #print(seen_cards)
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
                     algo=algorithm(RAISE_RATIO=0.2)
-                    raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, max_raise))
+                    # our raise is low bounded by min_raise, and upper bounded by max_raise and the raise reserve
+                    raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, min(max_raise, total_raise_reserve)))
                     
-                    #if street < 3: #pre-flop
-                    #    raise_ammount = int(my_pips[i] + board_cont_cost + 0.4 * (pot_total + board_cont_cost)) #play a little conservatively pre-flop
-                    #else:
-                    #    raise_ammount = int(my_pips[i] + board_cont_cost + 0.75 * (pot_total + board_cont_cost)) #raise the stakes deeper into the game
-                    
-                    #raise_ammount = max([min_raise, raise_ammount]) #make sure we have a valid raise
-                    #raise_ammount = min([max_raise, raise_ammount])
-    
-                    #raise_cost = raise_ammount - my_pips[i] #how much it costs to make that raise
-    
-                    if RaiseAction in legal_actions[i] and (raise_ammount <= my_stack - net_cost) and (raise_ammount > 0): #raise if we can and if we can afford it
+                    if RaiseAction in legal_actions[i] and raise_ammount > 0: #raise if we want and if we can afford it
                         my_actions[i] = RaiseAction(raise_ammount)
                         commit_cost = board_cont_cost+raise_ammount
+                        total_raise_reserve -= raise_ammount
                     
                     elif CallAction in legal_actions[i] and raise_ammount >=0: 
                         my_actions[i] = CallAction()
@@ -234,41 +231,8 @@ class Player(Bot):
                     else:
                         my_actions[i] = FoldAction()
                         commit_cost = 0
-                        
-                    '''
-                    if board_cont_cost > 0: #our opp raised!!! we must respond
-    
-                        if board_cont_cost > 5: #<--- parameters to tweak. 
-                            _INTIMIDATION = 0.15
-                            strength = max([0, strength - _INTIMIDATION]) #if our opp raises a lot, be cautious!
-                        
-    
-                        pot_odds = board_cont_cost / (pot_total + board_cont_cost)
-    
-                        if strength >= pot_odds: #Positive Expected Value!! at least call!!
-    
-                            if strength > 0.5 and random.random() < strength: #raise sometimes, more likely if our hand is strong
-                                my_actions[i] = commit_action
-                                net_cost += commit_cost
-                            
-                            else: # at least call if we don't raise
-                                my_actions[i] = CallAction()
-                                net_cost += board_cont_cost
-                        
-                        else: #Negatice Expected Value!!! FOLD!!!
-                            my_actions[i] = FoldAction()
-                            net_cost += 0
-                    
-                    else: #board_cont_cost == 0, we control the action
-    
-                        if random.random() < strength: #raise sometimes, more likely if our hand is strong
-                            my_actions[i] = commit_action
-                            net_cost += commit_cost
-    
-                        else: #just check otherwise
-                            my_actions[i] = CheckAction()
-                            net_cost += 0
-                '''
+                        # if decide to fold, then the raise reserve could be increased
+                        total_raise_reserve += continue_cost[i]
 
         return my_actions
 

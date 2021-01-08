@@ -61,9 +61,13 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
                 win_prob *= RAISE_DEC
 
         #precompute the amount to raise if we decide to
-        raise_amount = (int)(my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost))
-        raise_amount = min(raise_amount, raise_range[1])
-        raise_amount = max(raise_amount, raise_range[0])
+        #test if we could afford to raise
+        if raise_range[0] > raise_range[1]:
+            raise_amount = 0
+        else:
+            raise_amount = (int)(my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost))
+            raise_amount = min(raise_amount, raise_range[1])
+            raise_amount = max(raise_amount, raise_range[0])
         
         #the opponent just raised
         if continue_cost > 0:
