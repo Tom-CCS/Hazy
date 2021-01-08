@@ -4,13 +4,18 @@ import json
 """
 Handle Probability Computation
 """
-def raw_prob(self, card1, card2):
+PROBABILITIES={}
+filename="raw_prob.json"
+with open(filename,'r') as load_f:
+    PROBABILITIES = json.load(load_f)
+
+def raw_prob(card1, card2):
     '''
     Parameters: two cards, card1 and card2
     Return the raw probability of winning of two cards
     '''
-    num1,num2=card1[0],card2[0]
-    suit1,suit2=card1[1],card2[1]
+    num1,num2=str(card1)[0],str(card2)[0]
+    suit1,suit2=str(card1)[1],str(card2)[1]
     if num1==num2:
         return PROBABILITIES[num1+num2]
     else:
@@ -20,11 +25,144 @@ def raw_prob(self, card1, card2):
             return PROBABILITIES[s2]
         return PROBABILITIES[s1]
 
-def calc_prob(self, i, shown_cards):
+def calc_prob(cards, common_cards, guessing_opponent=None):
     '''
     Parameters:
-        i: The ith board (i=0,1,2)
-        shown_cards: the number of cards shown
-    Return: the probability of winning
+        cards: The list (of length 2) of different Cards
+            indicates the cards we have
+        shown_cards: A list of different Cards, length being 0,3,4,5
+            indicates the cards to be shown
+            The list is not intersecting with the previous list!
+        guessing_opponent: A list of cards,
+            we guess what cards the opponent have.
+            currently, we set it to None
+    Return: the conditional probability of winning. Assume the unseen cards are
+    distibuted 
     '''
-    pass
+    if len(common_cards)==0:# same as above, we are blins
+        return raw_prob(cards[0],cards[1])
+    
+    elif len(common_cards)==5: 
+    #If we calculate the exact probability for 5 cards, it will eat up <0.002s
+        deck=eval7.Deck()
+        for card in cards+common_cards:
+            deck.cards.remove(card)
+        score = 0
+        for i in range(len(deck)-1):
+            for j in range(i+1,len(deck)):
+                score+=win_or_lose(cards, common_cards, [deck[i],deck[j]])
+        return score / (44*45) #this is our win probability!
+    elif len(common_cards)==4: 
+    #If we calculate the exact probability for 4 cards, it will eat up ~0.073s
+    #It may be long and we may need to merge into the next case.
+        deck=eval7.Deck()
+        for card in cards+common_cards:
+            deck.cards.remove(card)
+        score = 0
+        for i in range(len(deck)-1):
+            for j in range(i+1,len(deck)):
+                for k in range(len(deck)):
+                    if k!=j and k!=i:
+                        score+=win_or_lose(cards, common_cards+[deck[k]], [deck[i],deck[j]])
+        return (score) / (44*45*46) #this is our win probability!
+    else: 
+    # Please, if you find the above slow, 
+    # do delete the len(common_cards)==4 case above.
+    # 1000 iterations will cost up to ~0.021s. If you find it slow, please lower it.
+        deck=eval7.Deck()
+        for card in cards+common_cards:
+            deck.cards.remove(card)
+        score = 0
+        iteration = 1000# The iteration
+        for i in range(iteration):
+            score+=win_or_lose(cards, common_cards, opponent_hand=[], rest=deck)
+        return score/(2*iteration)
+            
+            
+def win_or_lose(our_hand, current_common, opponent_hand=[], rest=None):
+    '''
+    Parameters:
+        our_hand: The list (of length 2) of different Cards
+            indicates the cards we have
+        opponent_hand: A List of lists (of length 2) of different Cards
+            indicates the cards the opponent have.
+            [] (empty list): the opponents' cards are not known
+        current_common: The list (of length 2) of different Cards
+            indicates the common cards
+        shuffle: A boolean
+            Indicates whether the missing card need to be randomly chosen
+        rest: A Deck of card
+            Indicates the rest of the card. Default is None (to be calculated).
+    Return: An integer to indicate the total wins/loses divided by n.
+    '''
+    if len(opponent_hand)==0:
+        if rest==None:
+            rest=eval7.Deck()
+            for card in our_hand+opponent_hand+current_common:
+                rest.cards.remove(card)
+        rest.shuffle() #make sure our samples are random
+        
+        _COMM = 5-len(current_common) #the number of cards we need to draw
+        _OPP = 2-len(opponent_hand)
+    
+        draw = rest.peek(_COMM + _OPP)
+        opp_hole = draw[: _OPP]
+        community = current_common+draw[_OPP: ]
+        
+        our_cards = our_hand + community #the two showdown hands
+        opp_cards = opp_hole + community
+    else:
+        our_cards = our_hand + current_common #the two showdown hands
+        opp_cards = opponent_hand + current_common
+
+    our_hand_value = eval7.evaluate(our_cards) #the ranks of our hands (only useful for comparisons)
+    opp_hand_value = eval7.evaluate(opp_cards)
+
+    if our_hand_value > opp_hand_value: #we win!
+        return 2
+    
+    elif our_hand_value == opp_hand_value: #we tie.
+        return 1
+    
+    else: #we lost....
+        return 0
+'''
+#Testcases:
+As,Ad,Ac,Ah=eval7.Card("As"),eval7.Card("Ad"),eval7.Card("Ac"),eval7.Card("Ah")
+Ks,Kd,Kc,Kh=eval7.Card("Ks"),eval7.Card("Kd"),eval7.Card("Kc"),eval7.Card("Kh")
+Qs,Qd,Qc,Qh=eval7.Card("Qs"),eval7.Card("Qd"),eval7.Card("Qc"),eval7.Card("Qh")
+Js,Jd,Jc,Jh=eval7.Card("Js"),eval7.Card("Jd"),eval7.Card("Jc"),eval7.Card("Jh")
+Ts,Td,Tc,Th=eval7.Card("Ts"),eval7.Card("Td"),eval7.Card("Tc"),eval7.Card("Th")
+assert calc_prob([As,Ah],[])==0.8521635
+assert calc_prob([As,Ah],[Ac,Kh,Ks,Kd,Qc])==43/45
+# lose iff opp has Kc
+assert calc_prob([As,Ah],[Ac,Kh,Ks,Qd,Qc])==1-4/(44*45)
+# lose iff opp has Kc, Kd or Qs, Qh
+assert calc_prob([Kc,Kd],[Kh,Qh,Th,Ks,Qs])==1-4/(44*45)
+# lose iff As, Js or 9s, Js
+assert calc_prob([Kc,Kd],[Kh,Td,Tc,Ks])==1
+# Never lose
+assert calc_prob([Kc,Kd],[Kh,Ts,Tc,Ks])==1-12/(44*45*46)
+# lose iff the remaining and the opponent are Js, Qs, As/9s 
+assert calc_prob([Kc,Kd],[Kh,Jd,Ks])>0.998
+# There is a four of a kind, almost never lose
+assert calc_prob([Kc,Kd],[Kh,Td,Ts])>0.99
+# There is a large full house, really high prob to win
+assert calc_prob([Jc,Kd],[Kh,Jd,Js])>0.95
+# There is a small full house, very high prob to win
+assert calc_prob([Ac,Kd],[Qh,Jd,Ts])>0.93
+# There is a straight, very high prob to win
+assert calc_prob([Ac,Td],[Th,Jd,Ts])>0.9
+# There is a three of a kind, high prob to win
+assert calc_prob([Jc,Kd],[Kh,Td,Js])>0.8
+# There is a large two pairs, high prob to win
+'''
+
+'''
+#Timer
+import time
+ST=time.time()
+calc_prob([Kc,Kd],[Kh,Td,Ks])
+ED=time.time()
+print(ED-ST)
+'''

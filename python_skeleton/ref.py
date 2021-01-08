@@ -5,6 +5,10 @@ Created on Wed Jan  6 21:17:52 2021
 """
 
 '''
+This file is just a reference, we will NOT run ANY PART of the file.
+'''
+
+'''
 This serves as something we can use to deal with eval7
 '''
 
@@ -26,7 +30,7 @@ cards.remove(eval7.Card("Ah"))
 eva=eval7.evaluate([eval7.Card("As"),eval7.Card("2s"),eval7.Card("3s"),eval7.Card("4s"),eval7.Card("5s"),eval7.Card("6s")])
 #This evaluates the combination of cards
 '''
- 
+
 '''
 The next calculates the UN-conditional probability for winning in all pairs (we
 did not distinguish roal flush and straight flush: they are truly super rare
@@ -78,23 +82,23 @@ def calc_prob(card1,card2):
 
 #import time
 #ST=time.time()
-ALL=325
+ALL=169
 count=1
 nums="23456789TJQKA"
 for i in range(12):
     for j in range(i+1,13):
         suited=calc_prob(eval7.Card(nums[i]+"c"),eval7.Card(nums[j]+"c"))
-        print("calculated ",count, "/ 325")
+        print("calculated ",count, "/ ", ALL)
         count+=1
         unsuited=calc_prob(eval7.Card(nums[i]+"c"),eval7.Card(nums[j]+"d"))
-        print("calculated ",count, "/ 325")
+        print("calculated ",count, "/ ", ALL)
         count+=1
         probabilities[nums[i]+nums[j]+"s"]=suited
         probabilities[nums[i]+nums[j]+"u"]=unsuited
 
 for i in nums:
     pairs=calc_prob(eval7.Card(i+"c"),eval7.Card(i+"d"))
-    print("calculated ",count, "/ 325")
+    print("calculated ",count, "/ ", ALL)
     count+=1
     probabilities[i+i]=pairs
 #ED=time.time()
