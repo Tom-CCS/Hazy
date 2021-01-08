@@ -9,6 +9,7 @@ from skeleton.runner import parse_args, run_bot
 
 from probability import raw_prob, calc_prob
 from algo_for_next_step import algorithm
+from allocate import allocate
 
 import eval7
 import random
@@ -38,8 +39,6 @@ class Player(Bot):
         Nothing.
         '''
         self.board_allocations=[[],[],[]]#The board allocation for three boards
-        self.play_high_thres=0.6 #The probability threshold to make it dare in high
-        self.play_mid_thres=0.5 #The probability threshold to make it dare in high
         self.folding_high=0
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
@@ -53,44 +52,7 @@ class Player(Bot):
         Returns:
         None.
         '''
-        max_prob=0
-        best=[]#Best pair
-        for i in range(2*NUM_BOARDS-1):
-            for j in range(i+1,2*NUM_BOARDS):
-                if raw_prob(my_cards[i],my_cards[j])>max_prob:
-                    max_prob=raw_prob(my_cards[i],my_cards[j])
-                    best=[my_cards[i],my_cards[j]]
-                    
-        rest=[]
-        for card in my_cards:
-            if card not in best:
-                rest.append(card)
-                
-        second_max_prob=0
-        second_best=[]#Second best pair
-        for i in range(2*NUM_BOARDS-3):
-            for j in range(i+1,2*NUM_BOARDS-2):
-                if raw_prob(rest[i],rest[j])>second_max_prob:
-                    second_max_prob=raw_prob(rest[i],rest[j])
-                    second_best=[rest[i],rest[j]]
-        
-        worst=[]
-        for card in rest:
-            if card not in second_best: worst.append(card)
-        
-        worst=[]
-        for card in rest:
-            if card not in second_best: worst.append(eval7.Card(str(card)))
-            
-        if max_prob>self.play_high_thres:# We can have a really good card
-            self.board_allocations=[worst, second_best, best]
-            self.folding_high=2
-        elif max_prob>self.play_mid_thres:# We can get a fair pair
-            self.board_allocations=[second_best, best, worst]
-            self.folding_high=1
-        else:# We have really bad luck
-            self.board_allocations=[best, worst, second_best]
-            self.folding_high=0
+        self.board_allocations, self.folding_high = allocate(my_cards)
             
     def calc_prob(self, i, shown_cards):
         '''
