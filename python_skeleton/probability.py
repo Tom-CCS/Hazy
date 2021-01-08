@@ -11,11 +11,12 @@ with open(filename,'r') as load_f:
 
 def raw_prob(card1, card2):
     '''
-    Parameters: two cards, card1 and card2
+    Parameters: two strings
+        represent two cards, card1 and card2
     Return the raw probability of winning of two cards
     '''
-    num1,num2=str(card1)[0],str(card2)[0]
-    suit1,suit2=str(card1)[1],str(card2)[1]
+    num1,num2=card1[0],card2[0]
+    suit1,suit2=card1[1],card2[1]
     if num1==num2:
         return PROBABILITIES[num1+num2]
     else:
@@ -40,7 +41,7 @@ def calc_prob(cards, common_cards, guessing_opponent=None):
     distibuted 
     '''
     if len(common_cards)==0:# same as above, we are blind
-        return raw_prob(cards[0],cards[1])
+        return raw_prob(str(cards[0]),str(cards[1]))
     
     elif len(common_cards)==5: 
     #If we calculate the exact probability for 5 cards, it will eat up <0.002s
