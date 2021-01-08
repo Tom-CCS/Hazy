@@ -57,7 +57,6 @@ class Player(Bot):
         best=[]#Best pair
         for i in range(2*NUM_BOARDS-1):
             for j in range(i+1,2*NUM_BOARDS):
-                print(111)
                 if raw_prob(my_cards[i],my_cards[j])>max_prob:
                     max_prob=raw_prob(my_cards[i],my_cards[j])
                     best=[my_cards[i],my_cards[j]]
@@ -71,7 +70,6 @@ class Player(Bot):
         second_best=[]#Second best pair
         for i in range(2*NUM_BOARDS-3):
             for j in range(i+1,2*NUM_BOARDS-2):
-                print(222)
                 if raw_prob(rest[i],rest[j])>second_max_prob:
                     second_max_prob=raw_prob(rest[i],rest[j])
                     second_best=[rest[i],rest[j]]
