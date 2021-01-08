@@ -41,7 +41,7 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
             n=0 if check (or call)
             n>0 for raise the money with n.
         '''
-        intimidate_guess=10
+        intimidate_guess=20
         # a parameter to guessing if the opp is intimidating
         # use as continue_cost>intimidate_guess
         
@@ -53,7 +53,7 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
         #as the opponent's hand might be very good
         if continue_cost > intimidate_guess:
             if random.random() < INTIMIDATE_PROB:
-                win_prob *= INTIMIDATE_DEC
+                win_prob *= 2**(continue_cost/40)
         #decrease win_prob if opponent just raised
         #as the opponent might have a good hand
         elif continue_cost > 0:
