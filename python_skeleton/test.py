@@ -1,4 +1,5 @@
 from probability import calc_prob
+from algo_for_next_step import algorithm
 import eval7
 
 def test_calc_prob():
@@ -31,4 +32,33 @@ def test_calc_prob():
     # There is a three of a kind, high prob to win
     assert calc_prob([Jc,Kd],[Kh,Td,Js])>0.8
     # There is a large two pairs, high prob to win
+
+
+def test_action():
+    action = algorithm()
+    #small probability to win and large cost, fold
+    assert action(0, 4, 1, 2, [1, 2]) == -1
+    assert action(0.2, 4, 1, 2, [1, 2]) == -1
+    #small probability to win but small cost, check/call
+    assert action(0.2, 1000, 499, 2, [1, 2]) == 0
+    #positive expectation but large cost, check/call
+    assert action(0.4, 10, 3, 4, [3, 10]) == 0
+    #positive expectation and positive cost, might attempt a valid raise
+    cnt = 0
+    for _ in range(100):
+        act = action(0.7, 10, 3, 4, [3, 10])
+        assert (act == 0) or (act >= 3 and act <= 10)
+        if (act > 0):
+            cnt += 1
+    #this has a small probability of failing
+    assert cnt > 0
+    #positive gain but the opponent is intimidating, check/call
+    action(0.7, 100, 3, 94, [94, 100])
+    assert action(0.7, 100, 3, 94, [94, 100]) == 0
+    
+    
+
 test_calc_prob()
+print("calc_prob tests passed.")
+test_action()
+print("action tests passed.")
