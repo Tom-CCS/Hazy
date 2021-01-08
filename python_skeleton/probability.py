@@ -39,41 +39,44 @@ def calc_prob(cards, common_cards, guessing_opponent=None):
     Return: the conditional probability of winning. Assume the unseen cards are
     distibuted 
     '''
-    if len(common_cards)==0:# same as above, we are blins
+    if len(common_cards)==0:# same as above, we are blind
         return raw_prob(cards[0],cards[1])
     
     elif len(common_cards)==5: 
     #If we calculate the exact probability for 5 cards, it will eat up <0.002s
         deck=eval7.Deck()
         for card in cards+common_cards:
-            deck.cards.remove(card)
+            deck.cards.remove(eval7.Card(str(card)))
         score = 0
         for i in range(len(deck)-1):
             for j in range(i+1,len(deck)):
                 score+=win_or_lose(cards, common_cards, [deck[i],deck[j]])
         return score / (44*45) #this is our win probability!
-    elif len(common_cards)==4: 
-    #If we calculate the exact probability for 4 cards, it will eat up ~0.073s
-    #It may be long and we may need to merge into the next case.
-        deck=eval7.Deck()
-        for card in cards+common_cards:
-            deck.cards.remove(card)
-        score = 0
-        for i in range(len(deck)-1):
-            for j in range(i+1,len(deck)):
-                for k in range(len(deck)):
-                    if k!=j and k!=i:
-                        score+=win_or_lose(cards, common_cards+[deck[k]], [deck[i],deck[j]])
-        return (score) / (44*45*46) #this is our win probability!
+    
+    #elif len(common_cards)==4: 
+    # #If we calculate the exact probability for 4 cards, it will eat up ~0.073s
+    # #It may be long and we may need to merge into the next case.
+    #   deck=eval7.Deck()
+    #    for card in cards+common_cards:
+    #        deck.cards.remove(eval7.Card(str(card)))
+    #    score = 0
+    #    for i in range(len(deck)-1):
+    #        for j in range(i+1,len(deck)):
+    #            for k in range(len(deck)):
+    #                if k!=j and k!=i:
+    #                    score+=win_or_lose(cards, common_cards+[deck[k]], [deck[i],deck[j]])
+    #    return (score) / (44*45*46) #this is our win probability!
     else: 
     # Please, if you find the above slow, 
     # do delete the len(common_cards)==4 case above.
     # 1000 iterations will cost up to ~0.021s. If you find it slow, please lower it.
         deck=eval7.Deck()
         for card in cards+common_cards:
-            deck.cards.remove(card)
+            deck.cards.remove(eval7.Card(str(card)))
+            #print(card)
+            #print(type(card))
         score = 0
-        iteration = 1000# The iteration
+        iteration = 350# The iteration
         for i in range(iteration):
             score+=win_or_lose(cards, common_cards, opponent_hand=[], rest=deck)
         return score/(2*iteration)

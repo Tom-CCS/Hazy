@@ -7,6 +7,9 @@ from skeleton.states import NUM_ROUNDS, STARTING_STACK, BIG_BLIND, SMALL_BLIND, 
 from skeleton.bot import Bot
 from skeleton.runner import parse_args, run_bot
 
+from probability import raw_prob, calc_prob
+from algo_for_next_step import algorithm
+
 import eval7
 import random
 import json
@@ -52,8 +55,8 @@ class Player(Bot):
         best=[]#Best pair
         for i in range(2*NUM_BOARDS-1):
             for j in range(i+1,2*NUM_BOARDS):
-                if self.raw_prob(my_cards[i],my_cards[j])>max_prob:
-                    best=[my_cards[i],my_cards[j]]
+                if raw_prob(my_cards[i],my_cards[j])>max_prob:
+                    best=[eval7.Card(str(my_cards[i])),eval7.Card(str(my_cards[j]))]
         
         rest=[]
         for card in my_cards:
@@ -63,13 +66,12 @@ class Player(Bot):
         second_best=[]#Second best pair
         for i in range(2*NUM_BOARDS-3):
             for j in range(i+1,2*NUM_BOARDS-2):
-                if self.raw_prob(my_cards[i],my_cards[j])>second_max_prob:
-                    second_best=[my_cards[i],my_cards[j]]
+                if raw_prob(my_cards[i],my_cards[j])>second_max_prob:
+                    second_best=[eval7.Card(str(my_cards[i])),eval7.Card(str(my_cards[j]))]
         
         worst=[]
         for card in rest:
-            if card not in second_best: worst.append(card)
-        
+            if card not in second_best: worst.append(eval7.Card(str(card)))        
         if max_prob>self.play_high_thres:# We can have a really good card
             self.board_allocations=[worst, second_best, best]
         elif max_prob>self.play_high_thres:# We can get a fair pair
@@ -104,7 +106,8 @@ class Player(Bot):
         round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
         my_cards = round_state.hands[active]  # your six cards at teh start of the round
         big_blind = bool(active)  # True if you are the big blind
-        pass
+        
+        self.allocate_cards(my_cards) #our old allocation strategy
 
     def handle_round_over(self, game_state, terminal_state, active):
         '''
@@ -126,7 +129,14 @@ class Player(Bot):
             previous_board_state = terminal_board_state.previous_state
             my_cards = previous_board_state.hands[active]  # your cards
             opp_cards = previous_board_state.hands[1-active]  # opponent's cards or [] if not revealed
-        pass
+        
+        self.board_allocations = [[], [], []] #reset our variables at the end of every round!
+
+        game_clock = game_state.game_clock #check how much time we have remaining at the end of a game
+        round_num = game_state.round_num #Monte Carlo takes a lot of time, we use this to adjust!
+        if round_num == NUM_ROUNDS:
+            print(game_clock)
+
 
     def get_actions(self, game_state, round_state, active):
         '''
@@ -155,14 +165,88 @@ class Player(Bot):
         net_cost = 0 # keep track of the net additional amount you are spending across boards this round
         my_actions = [None] * NUM_BOARDS
         for i in range(NUM_BOARDS):
+            
             if AssignAction in legal_actions[i]: # This indicates it is the allocating round
-                #cards = [my_cards[2*i], my_cards[2*i+1]]
-                #my_actions[i] = AssignAction(cards)
-                pass
-            elif CheckAction in legal_actions[i]:  # check-call
-                my_actions[i] = CheckAction()
-            else:
-                my_actions[i] = CallAction()
+                cards = self.board_allocations[i] #allocate our cards that we made earlier
+                str_cards=[str(cards[0]),str(cards[1])]
+                my_actions[i] = AssignAction(str_cards) #add to our actions
+                
+            elif isinstance(round_state.board_states[i], TerminalState): #make sure the game isn't over at this board
+                my_actions[i] = CheckAction() #check if it is
+            
+            else: #do we add more resources?
+                board_cont_cost = continue_cost[i] #we need to pay this to keep playing
+                board_total = round_state.board_states[i].pot #amount before we started betting
+                pot_total = my_pips[i] + opp_pips[i] + board_total #total money in the pot right now
+                min_raise, max_raise = round_state.board_states[i].raise_bounds(active, round_state.stacks)
+                
+                #print("board_cards : ",board_cards)
+                seen_cards=[]
+                for card in board_cards[i]:
+                    if card!='':
+                        seen_cards.append(eval7.Card(str(card)))
+                #print(seen_cards)
+                win_prob=calc_prob(self.board_allocations[i],seen_cards)
+                algo=algorithm()
+                raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, max_raise))
+                
+                #if street < 3: #pre-flop
+                #    raise_ammount = int(my_pips[i] + board_cont_cost + 0.4 * (pot_total + board_cont_cost)) #play a little conservatively pre-flop
+                #else:
+                #    raise_ammount = int(my_pips[i] + board_cont_cost + 0.75 * (pot_total + board_cont_cost)) #raise the stakes deeper into the game
+                
+                #raise_ammount = max([min_raise, raise_ammount]) #make sure we have a valid raise
+                #raise_ammount = min([max_raise, raise_ammount])
+
+                #raise_cost = raise_ammount - my_pips[i] #how much it costs to make that raise
+
+                if RaiseAction in legal_actions[i] and (raise_ammount <= my_stack - net_cost) and (raise_ammount > 0): #raise if we can and if we can afford it
+                    my_actions[i] = RaiseAction(raise_ammount)
+                    commit_cost = board_cont_cost+raise_ammount
+                
+                elif CallAction in legal_actions[i] and raise_ammount >=0: 
+                    my_actions[i] = CallAction()
+                    commit_cost = board_cont_cost #the cost to call is board_cont_cost
+                
+                else: #checking is our only valid move here
+                    my_actions[i] = CheckAction()
+                    commit_cost = 0
+                    
+                '''
+                if board_cont_cost > 0: #our opp raised!!! we must respond
+
+                    if board_cont_cost > 5: #<--- parameters to tweak. 
+                        _INTIMIDATION = 0.15
+                        strength = max([0, strength - _INTIMIDATION]) #if our opp raises a lot, be cautious!
+                    
+
+                    pot_odds = board_cont_cost / (pot_total + board_cont_cost)
+
+                    if strength >= pot_odds: #Positive Expected Value!! at least call!!
+
+                        if strength > 0.5 and random.random() < strength: #raise sometimes, more likely if our hand is strong
+                            my_actions[i] = commit_action
+                            net_cost += commit_cost
+                        
+                        else: # at least call if we don't raise
+                            my_actions[i] = CallAction()
+                            net_cost += board_cont_cost
+                    
+                    else: #Negatice Expected Value!!! FOLD!!!
+                        my_actions[i] = FoldAction()
+                        net_cost += 0
+                
+                else: #board_cont_cost == 0, we control the action
+
+                    if random.random() < strength: #raise sometimes, more likely if our hand is strong
+                        my_actions[i] = commit_action
+                        net_cost += commit_cost
+
+                    else: #just check otherwise
+                        my_actions[i] = CheckAction()
+                        net_cost += 0
+                '''
+
         return my_actions
 
 if __name__ == '__main__':
