@@ -69,8 +69,9 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
             if win_prob > 0.7:
                 raise_amount += RAISE_RATIO * (current_pot + continue_cost) * 0.75
             raise_amount = (int)(raise_amount)
-            truncated_raise_amount = min(raise_amount, raise_range[1])
-            truncated_raise_amount = max(truncated_raise_amount, raise_range[0])
+        
+        truncated_raise_amount = min(raise_amount, raise_range[1])
+        truncated_raise_amount = max(truncated_raise_amount, raise_range[0])
         
         #the opponent just raised
         if continue_cost > 0:
