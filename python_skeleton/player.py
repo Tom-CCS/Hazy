@@ -170,7 +170,7 @@ class Player(Bot):
                     #print(self.board_allocations[i])
                     #print(seen_cards)
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
-                    algo=algorithm(RAISE_RATIO=0.2)
+                    algo=algorithm(RAISE_RATIO=0.25)
                     # our raise is low bounded by min_raise, and upper bounded by max_raise and the raise reserve
                     raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, min(max_raise, total_raise_reserve)))
                     

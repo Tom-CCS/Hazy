@@ -41,7 +41,8 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
             n=0 if check (or call)
             n>0 for raise the money with n.
         '''
-        intimidate_guess=20
+        #print("fuck")
+        intimidate_guess=10
         # a parameter to guessing if the opp is intimidating
         # use as continue_cost>intimidate_guess
         
@@ -53,13 +54,14 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
         #as the opponent's hand might be very good
         if continue_cost > intimidate_guess:
             if random.random() < INTIMIDATE_PROB:
-                win_prob *= 2**(-continue_cost/40)
+                win_prob = win_prob*(2**(-(continue_cost-intimidate_guess)/50))
         #decrease win_prob if opponent just raised
         #as the opponent might have a good hand
         elif continue_cost > 0:
             if random.random() < RAISE_PROB:
                 win_prob *= RAISE_DEC
-
+        
+        #print(win_prob)
         #precompute the amount to raise if we decide to
         #test if we could afford to raise
         if raise_range[0] > raise_range[1]:
@@ -73,6 +75,7 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
         truncated_raise_amount = min(raise_amount, raise_range[1])
         truncated_raise_amount = max(truncated_raise_amount, raise_range[0])
         
+        #print(raise_amount)
         #the opponent just raised
         if continue_cost > 0:
             #find the pot odds
@@ -96,3 +99,6 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=0.7, RAISE_PROB=1.0, RAISE_DEC
                 return 0
 
     return action
+
+A=algorithm()
+A(0.9,30,5,37,(7,100))
