@@ -19,8 +19,8 @@ with open(filename, "r") as f:
         #read until the next blank line, which marks the end of the game
         A_hands = []
         B_hands = []
+        board_pots = [0,0,0]
         round_raises = {'A':[[], [], []], 'B':[[], [], []]}
-        B_raises = [[], [], []]
         streets = [[], [], []]
         A_pip = [0,0,0]
         B_pip = [0,0,0]
@@ -38,12 +38,22 @@ with open(filename, "r") as f:
             else:
                 #calls
                 if words[1] == "raises":
-                    result = re.match(REGEX_RAISE)
+                    result = re.match(REGEX_RAISE, line)
                     player, amount, board = result.group(1, 2, 3)
                     board = int(board) - 1
                     amount = int(amount)
-                    if player == 'A':
-                        A_raises[board].append(amount)
+                    board_pots[board] = amount
+                    number_of_raise[player] += 1                 
             line = f.readline()
+#print statistics
+print("Number of raises:", number_of_raise)
+#TODO: number of folds
+#TODO: total amount of raises
+#TODO: average raise
+#TODO: pre-flop raise
+#TODO: raise in advantage
+#TODO: raise in disadvantage
+#TODO: successful intimidation
+#etc...
                 
                             
