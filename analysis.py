@@ -2,12 +2,12 @@ import matplotlib
 import re
 filename = "gamelog.txt"
 REGEX_BLIND = "(.) posts the blind of (\d)"
-REGEX_ASSIGN = "(.) assigns \[(*)\] to board (\d)"
+REGEX_ASSIGN = "(.) assigns \[(.*)\] to board (\d)"
 REGEX_CALL = "(.) calls on board \d"
-REGEX_RAISE = "(.) raises to [(\d)]+ on board (\d)"
-REGEX_BET = "(.) bets [\d]+ on board (\d)"
+REGEX_RAISE = "(.) raises to (\d+) on board (\d)"
+REGEX_BET = "(.) bets (\d+) on board (\d)"
 REGEX_REVEAL = "(Flop|Turn|River) \[(.*)\], \(\d+\), (.) \(\d+\), (.) \(\d+\) on board (\d)"
-REGEX_SHOW = "? shows \[*\] on board (\d)"
+REGEX_SHOW = "? shows \[.*\] on board (\d)"
 with open(filename, "r") as f:
     f.readline() 
     f.readline() # discard the header
