@@ -5,6 +5,7 @@ REGEX_BLIND = "(.) posts the blind of (\d)"
 REGEX_ASSIGN = "(.) assigns \[(.*)\] to board (\d)"
 REGEX_CALL = "(.) calls on board \d"
 REGEX_RAISE = "(.) raises to (\d+) on board (\d)"
+REGEX_FOLD = "(.) folds on board (\d)"
 REGEX_BET = "(.) bets (\d+) on board (\d)"
 REGEX_REVEAL = "(Flop|Turn|River) \[(.*)\], \(\d+\), (.) \(\d+\), (.) \(\d+\) on board (\d)"
 REGEX_SHOW = "? shows \[.*\] on board (\d)"
@@ -13,6 +14,8 @@ with open(filename, "r") as f:
     f.readline() # discard the header
     line = "start"
     number_of_raise = {'A':0,'B':0}
+    total_of_raise = {'A':0,'B':0}
+    number_of_folds = {'A':0,'B':0}
     all_raises = {'A':[], 'B': []}
     #read until EOF
     while len(line) > 0:
@@ -43,13 +46,20 @@ with open(filename, "r") as f:
                     board = int(board) - 1
                     amount = int(amount)
                     board_pots[board] = amount
-                    number_of_raise[player] += 1                 
+                    number_of_raise[player] += 1
+                    total_of_raise[player] += amount
+                else:
+                    if words[1] == "folds":
+                        result = re.match(REGEX_FOLD, line)
+                        player, board = result.group(1, 2)
+                        board = int(board) - 1
+                        number_of_folds[player] += 1
             line = f.readline()
 #print statistics
 print("Number of raises:", number_of_raise)
-#TODO: number of folds
-#TODO: total amount of raises
-#TODO: average raise
+print("Number of folds:", number_of_folds)
+print("Total amount of raises:", total_of_raise)
+print("Average raise:", total_of_raise/number_of_raise)
 #TODO: pre-flop raise
 #TODO: raise in advantage
 #TODO: raise in disadvantage
