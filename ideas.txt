@@ -78,6 +78,15 @@ Further “modules”:
 1. guessing the opponent’s card
 e.g. shrink the range, and even give weight to different possible pairs of card
 
+First idea:
+If it raise from preflop, we can derive it is from a certain set. (eg. prob(win)>0.6)
+If it calls, it is from another set. (eg. prob(win)>0.45)
+So we can shrink the set
+
+Second idea:
+It is suddenly have a high raise: it may have a good card
+But cautious: if it does not really likely to have a good card (we may detect them), we can guess it is intimidating.
+
 2. Intimidate (at a prob param)
 e.g. We can raise high on some circumstances, not too often.
 (strongly useful when:
@@ -88,6 +97,14 @@ The street cards can be really close to some big hands (eg. straight, flush, ful
 
 e.g. When the enemy is timid, we could use intimidate more often.
 
+e.g. Try to guess the number of the bid in stage 0,3,4,5 by calculating the varience and the mean of the bid.
+
+e.g. Try to figure out the pattern of them: like analysis the step bids.
+
 4. Hiding yourself.
+
+e.g. using various algorithms to deal with the opponent
+like: INTIMIDATING, CONSERVATIVE, MORE_AGGRESSIVE
+Intimidating: if they bid small, we can try
 
 5. CFR(counterfactual regret minimization)
