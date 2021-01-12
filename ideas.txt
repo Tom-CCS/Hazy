@@ -101,6 +101,9 @@ e.g. Try to guess the number of the bid in stage 0,3,4,5 by calculating the vari
 
 e.g. Try to figure out the pattern of them: like analysis the step bids.
 
+e.g. 500 rounds -> okay to lose several for “testing”
+Idiot bot behavior: indifferent to extreme intimidation
+
 4. Hiding yourself.
 
 e.g. using various algorithms to deal with the opponent

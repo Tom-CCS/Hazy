@@ -10,11 +10,13 @@ from skeleton.runner import parse_args, run_bot
 from probability import raw_prob, calc_prob
 from algo_for_next_step import algorithm
 from allocate import allocate
+from behaviour_study import is_all_in
 
 import eval7
 import random
 import json
 
+LARGE_RAISE_THRESHOLD = 100
 PROBABILITIES={}
 filename="raw_prob.json"
 with open(filename,'r') as load_f:
@@ -40,6 +42,10 @@ class Player(Bot):
         '''
         self.board_allocations=[[],[],[]]#The board allocation for three boards
         self.playing=[]
+
+        self.large_raise_count = 0 # count the number of raises greater than LARGE_RAISE_THRESHOLD made
+        self.round_count = 0 # count the number of rounds elapsed
+
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
         
@@ -79,6 +85,8 @@ class Player(Bot):
         
         self.allocate_cards(my_cards) #our old allocation strategy
 
+        self.round_count += 1 
+
     def handle_round_over(self, game_state, terminal_state, active):
         '''
         Called when a round ends. Called NUM_ROUNDS times.
@@ -106,6 +114,8 @@ class Player(Bot):
         round_num = game_state.round_num #Monte Carlo takes a lot of time, we use this to adjust!
         if round_num == NUM_ROUNDS:
             print(game_clock)
+
+        print(is_all_in(self.large_raise_count, self.round_count))
 
 
     def get_actions(self, game_state, round_state, active):
@@ -138,7 +148,12 @@ class Player(Bot):
         total_cont_cost = sum(continue_cost) # the minimum number of chips to keep playing at all the tables
         total_raise_reserve = my_stack - total_cont_cost
         for i in range(NUM_BOARDS):
-            
+            # Study opponent behaviour
+            # Decide if the opponent just made a large raise
+            if continue_cost[i] > LARGE_RAISE_THRESHOLD:
+                self.large_raise_count += 1
+
+            # Decide own action
             if AssignAction in legal_actions[i]: # This indicates it is the allocating round
                 cards = self.board_allocations[i] #allocate our cards that we made earlier
                 my_actions[i] = AssignAction(cards) #add to our actions
@@ -170,7 +185,12 @@ class Player(Bot):
                     #print(self.board_allocations[i])
                     #print(seen_cards)
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
-                    algo=algorithm()
+                    #adjust algorithm if the opponent is all-in
+                    if is_all_in(self.large_raise_count, self.round_count):
+                        #TODO: Optimize this
+                        algo = algorithm(INTIMIDATE_DEC=lambda x: 0.9 if x > 0 else 1)
+                    else:
+                        algo = algorithm()
                     # our raise is low bounded by min_raise, and upper bounded by max_raise and the raise reserve
                     raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, min(max_raise, total_raise_reserve)))
                     
