@@ -161,8 +161,11 @@ class Player(Bot):
                     self.algorithms_prob[i] = 0
             #normalize
             s = sum(self.algorithms_prob)
-            for i in range(num_alg):
-                self.algorithms_prob[i] /= s
+            if s == 0:
+                self.algorithms_prob = [0.3, 0.3, 0.4]
+            else:
+                for i in range(num_alg):
+                    self.algorithms_prob[i] /= s
             print(self.algorithms_prob)
 
 
