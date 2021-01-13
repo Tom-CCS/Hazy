@@ -16,14 +16,22 @@ import eval7
 import random
 import json
 
+#characterize all-in bots
 LARGE_RAISE_THRESHOLD = 100
+#hybrid algorithm
+algo_timid = {"RAISE_THRES": 0.7, "RAISE_RATIO": 0.4}
+algo_normal = {"RAISE_THRES": 0.5, "RAISE_RATIO": 0.4}
+algo_aggressive = {"RAISE_THRES": 0.5, "RAISE_RATIO": 0.6}
+algorithms = [algo_timid, algo_normal, algo_aggressive]
+#different possibility of taking each algorithm
+algorithms_prob = [0.3, 0.3, 0.4]
+#The winning probabilities for RAW first two cards,
+#calculated OUTSIDE this program and stored in prob.json file.
 PROBABILITIES={}
 filename="raw_prob.json"
 with open(filename,'r') as load_f:
     PROBABILITIES = json.load(load_f)
 
-#The winning probabilities for RAW first two cards,
-#calculated OUTSIDE this program and stored in prob.json file.
 
 class Player(Bot):
     '''
@@ -45,6 +53,7 @@ class Player(Bot):
 
         self.large_raise_count = 0 # count the number of raises greater than LARGE_RAISE_THRESHOLD made
         self.round_count = 0 # count the number of rounds elapsed
+        self.algo = []
 
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
@@ -63,7 +72,25 @@ class Player(Bot):
         if index==2: self.playing=[1,1,1]
         if index==1: self.playing=[1,1,0]
         if index==0: self.playing=[1,0,0]
-            
+
+    def choose_algo(self):
+        '''
+        Called for each round. Choose the algorithm parameter for this round.
+
+        Returns:
+        A random algorithm parameter from algorithms
+        where each algorithm is chosen with probability algorithms_prob
+        '''
+        seed = random.random()
+        i = 0
+        sum = 0
+        while True:
+            sum += algorithms_prob[i]
+            if seed < sum:
+                break
+            i += 1
+        return algorithms[i]
+             
     def handle_new_round(self, game_state, round_state, active):
         '''
         Called when a new round starts. Called NUM_ROUNDS times.
@@ -82,6 +109,8 @@ class Player(Bot):
         round_num = game_state.round_num  # the round number from 1 to NUM_ROUNDS
         my_cards = round_state.hands[active]  # your six cards at teh start of the round
         big_blind = bool(active)  # True if you are the big blind
+
+        self.algo = self.choose_algo() # select the algo parameters for this round
         
         self.allocate_cards(my_cards) #our old allocation strategy
 
@@ -190,7 +219,7 @@ class Player(Bot):
                         #TODO: Optimize this
                         algo = algorithm(INTIMIDATE_DEC=lambda x: 0.9 if x > 0 else 1)
                     else:
-                        algo = algorithm()
+                        algo = algorithm(RAISE_THRES=self.algo["RAISE_THRES"] ,RAISE_RATIO = self.algo["RAISE_RATIO"])
                     # our raise is low bounded by min_raise, and upper bounded by max_raise and the raise reserve
                     raise_ammount=algo(win_prob, pot_total, my_pips[i], board_cont_cost, (min_raise, min(max_raise, total_raise_reserve)))
                     
