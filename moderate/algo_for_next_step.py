@@ -1,17 +1,21 @@
 import eval7
 import random
-def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=lambda x: 2**(-0.5 * x), RAISE_THRES=0.5, RAISE_RATIO=0.6):
+def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=lambda x: 2**(-0.5 * x), RAISE_PROB=1.0, RAISE_DEC=1.0, RAISE_THRES=0.5, RAISE_RATIO=0.4):
     '''
     Parameters:
         INTIMIDATE_PROB: a float in [0,1]. Set to 1.0.
             the "probability" that the opponent has a good hand when a large raise is made
         INTIMIATE_DEC: a float in [0,1]. Set to 0.7
             the decrease in win probability we should factor in when the opponent is intimidating
+        RAISE_PROB: a float in [0,1]. Set to 1.0
+            the "probability" that the opponent has a good hand when a small raise is made
+        RAISE_DEC: a float in [0,1]. Set to 1.0
+            the decrease in win probability we should factor in when the opponent is intimidating
 
-        RAISE_THRES: a float in [0,1]. Set to 0.
+        RAISE_THRES: a float in [0,1]. Set to 0.5
             how large win_prob must be to consider a raise.
         RAISE_RATIO: a float in [0,1]
-            how large we should raise. Set to 0.4
+            how large we should raise. Set to 0.75
             The formula for raising is my_pips + cont_cost + RAISE_RATIO * (current_pot + cont_cost)
         
     Return:
