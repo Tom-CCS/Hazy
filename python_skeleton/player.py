@@ -19,12 +19,11 @@ import json
 #characterize all-in bots
 LARGE_RAISE_THRESHOLD = 100
 #hybrid algorithm
+num_alg = 3
 algo_timid = {"RAISE_THRES": 0.7, "RAISE_RATIO": 0.4}
 algo_normal = {"RAISE_THRES": 0.5, "RAISE_RATIO": 0.4}
 algo_aggressive = {"RAISE_THRES": 0.5, "RAISE_RATIO": 0.6}
 algorithms = [algo_timid, algo_normal, algo_aggressive]
-#different possibility of taking each algorithm
-algorithms_prob = [0.3, 0.3, 0.4]
 #The winning probabilities for RAW first two cards,
 #calculated OUTSIDE this program and stored in prob.json file.
 PROBABILITIES={}
@@ -53,7 +52,13 @@ class Player(Bot):
 
         self.large_raise_count = 0 # count the number of raises greater than LARGE_RAISE_THRESHOLD made
         self.round_count = 0 # count the number of rounds elapsed
+        self.algo_index = -1
         self.algo = []
+
+        #different possibility of taking each algorithm
+        self.algorithms_prob = [0.3, 0.3, 0.4]
+        #the gain each algorithm achieved
+        self.algorithms_gain = [0] * num_alg
 
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
@@ -78,18 +83,18 @@ class Player(Bot):
         Called for each round. Choose the algorithm parameter for this round.
 
         Returns:
-        A random algorithm parameter from algorithms
+        A random algorithm parameter from algorithms, as well as its index
         where each algorithm is chosen with probability algorithms_prob
         '''
         seed = random.random()
         i = 0
         sum = 0
         while True:
-            sum += algorithms_prob[i]
+            sum += self.algorithms_prob[i]
             if seed < sum:
                 break
             i += 1
-        return algorithms[i]
+        return i, algorithms[i]
              
     def handle_new_round(self, game_state, round_state, active):
         '''
@@ -110,7 +115,7 @@ class Player(Bot):
         my_cards = round_state.hands[active]  # your six cards at teh start of the round
         big_blind = bool(active)  # True if you are the big blind
 
-        self.algo = self.choose_algo() # select the algo parameters for this round
+        self.algo_index, self.algo = self.choose_algo() # select the algo parameters for this round
         
         self.allocate_cards(my_cards) #our old allocation strategy
 
@@ -144,7 +149,22 @@ class Player(Bot):
         if round_num == NUM_ROUNDS:
             print(game_clock)
 
-        print(is_all_in(self.large_raise_count, self.round_count))
+        #update the gains of an algorithm
+        self.algorithms_gain[self.algo_index] += (my_delta - opp_delta)
+        #update our inference on how to weight each algorithm after 150 rounds
+        if round_num == 150:
+            #you can tune this parameter here
+            for i in range(num_alg):
+                self.algorithms_prob[i] += self.algorithms_gain[i] * 0.0005
+                self.algorithms_gain[i] = 0
+                if self.algorithms_prob[i] < 0:
+                    self.algorithms_prob[i] = 0
+            #normalize
+            s = sum(self.algorithms_prob)
+            for i in range(num_alg):
+                self.algorithms_prob[i] /= s
+            print(self.algorithms_prob)
+
 
 
     def get_actions(self, game_state, round_state, active):
