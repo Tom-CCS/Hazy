@@ -26,7 +26,7 @@ public class FakeEval7 {
 	 * @param common: the common cards (up to 5 strings)
 	 * @return an integer, the largest possible score of my cards + common 5 cards
 	 */
-	public int score(List<String> ours, List<String> common){
+	public static int score(List<String> ours, List<String> common){
 		int max=0;
 		int n=common.size();
 		List<String> ls=new ArrayList<>(ours);
@@ -40,7 +40,7 @@ public class FakeEval7 {
 			for (int j=0;j<n+1;j++) {
 				card2=ls.get(0);
 				ls.remove(0);
-				score=this.handScore(ls);
+				score= handScore(ls);
 				if (score>max) max=score;
 				ls.add(card2);
 			}
@@ -60,7 +60,7 @@ public class FakeEval7 {
      * high_card=1
 	 * class<<20 + 1st kicker (if any)<<16+ 2nd kicker (if any)<<12 + ... +5th kicker (is any) <<0
 	 */
-	public int handScore(List<String> cards) {
+	public static int handScore(List<String> cards) {
 		int classify=1<<20;
 		int[] kickers=new int[5];
 		for (int i=0;i<5;i++) kickers[i]=1<<(16-4*i);
@@ -146,8 +146,8 @@ public class FakeEval7 {
 	 * @param cards: a set of 5 cards (represented by strings)
 	 * @return a boolean, indicates whether it is a straight
 	 */
-	public int isStraight(List<String> cards) {
-		Map<Integer,Integer> card_dict=this.toMap(cards);
+	public static int isStraight(List<String> cards) {
+		Map<Integer,Integer> card_dict = toMap(cards);
 		Set<Integer> ranks=card_dict.keySet();
 		int smallest=Collections.min(ranks);
 	    if (smallest==2) {
@@ -167,7 +167,7 @@ public class FakeEval7 {
 	 * @param cards: a set of 5 cards (represented by strings)
 	 * @return a map counting how many cards for a certain rank for it
 	 * */ 
-	private Map<Integer,Integer> toMap(List<String> cards) {
+	private static Map<Integer,Integer> toMap(List<String> cards) {
 		Map<Integer,Integer> result=new HashMap<>();
 		for (String card:cards){
 			String rank=card.substring(0, 1);
@@ -184,7 +184,7 @@ public class FakeEval7 {
 	 * @param cards: a set of 5 cards (represented by strings)
 	 * @return a boolean, indicates whether it is a flush
 	 */
-	public boolean isFlush(List<String> cards) {
+	public static boolean isFlush(List<String> cards) {
 		String suit=null;
 		for (String card:cards){
 			if (suit==null) suit=card.substring(1);
