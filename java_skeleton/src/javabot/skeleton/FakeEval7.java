@@ -13,7 +13,7 @@ public class FakeEval7 {
 	private static final String RANKS = "23456789TJQKA";
     private static Map<String, Integer> RTN = new HashMap<>();
     
-	public FakeEval7() {
+	static {
 		for(int i=0;i<13;i++) {
 			RTN.put(RANKS.substring(i, i+1), i+2);
 		}
@@ -23,7 +23,7 @@ public class FakeEval7 {
 	/**
 	 * Calculate the rank of the cards
 	 * @param ours: our cards (2 strings)
-	 * @param common: the common cards (up to 5 strings)
+	 * @param common: the common cards (3~5 strings)
 	 * @return an integer, the largest possible score of my cards + common 5 cards
 	 */
 	public static int score(List<String> ours, List<String> common){
@@ -31,20 +31,18 @@ public class FakeEval7 {
 		int n=common.size();
 		List<String> ls=new ArrayList<>(ours);
 		ls.addAll(common);
-		String card1;
-		String card2;
 		int score;
-		for (int i=0;i<n+2;i++) {
-			card1=ls.get(0);
-			ls.remove(0);
-			for (int j=0;j<n+1;j++) {
-				card2=ls.get(0);
-				ls.remove(0);
-				score= handScore(ls);
-				if (score>max) max=score;
-				ls.add(card2);
+		for (int i=0;i<n-2;i++) {
+			for (int j=i+1;j<n-1;j++) {
+				for (int k=j+1;k<n;k++) {
+					for (int l=k+1;l<n+1;l++) {
+						for (int m=l+1;m<n+2;m++) {
+							score = handScore(List.of(ls.get(i),ls.get(j),ls.get(k),ls.get(l),ls.get(m)));
+							max = score>max? score : max;
+						}
+					}
+				}
 			}
-			ls.add(card1);
 		}
 		return max;
 	}

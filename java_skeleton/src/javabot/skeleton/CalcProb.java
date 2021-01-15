@@ -1,14 +1,46 @@
 package javabot.skeleton;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+
 public class CalcProb {
-    private static final Map<String, Double> PROBABILITIES = Map.of();
+    private static Map<String,Double> PROBABILITIES = new HashMap<>();
+	static{
+		JSONParser jsonParser = new JSONParser();
+		try (FileReader reader = new FileReader("src\\javabot\\skeleton\\rawProb.json")) {
+	        // Read JSON file
+	        Object obj = jsonParser.parse(reader);
+	
+	        JSONObject ProbJson = (JSONObject) obj;
+	        
+	        @SuppressWarnings("unchecked")
+			Iterator<String> it =ProbJson.keySet().iterator();
+	        while (it.hasNext()) {
+	        	String combo = it.next();
+	        	PROBABILITIES.put(combo, (Double)ProbJson.get(combo));
+	        }
+	    } catch (FileNotFoundException e) {
+	        e.printStackTrace();
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    } catch (ParseException e) {
+	        e.printStackTrace();
+	    }
+	}
+	
     private static final List<String> Deck = 
-            List.of("1s", "1c", "1d", "1h",
+            List.of("As", "Ac", "Ad", "Ah",
                     "2s", "2c", "2d", "2h",
                     "3s", "3c", "3d", "3h",
                     "4s", "4c", "4d", "4h",
@@ -33,7 +65,7 @@ public class CalcProb {
         char suit1 = card1.charAt(1);
         char suit2 = card2.charAt(1);
         if (num1 == num2) {
-            String query = "" + suit1 + suit2;
+            String query = ""+ num1 + num1;
             return PROBABILITIES.get(query);
         }
         else {
@@ -41,8 +73,7 @@ public class CalcProb {
             String s2 = (suit1 == suit2)? "" + num2 + num1 + "s": "" + num2 + num1 + "u";
             if (PROBABILITIES.containsKey(s1)) {
                 return PROBABILITIES.get(s1);
-            }
-            else {
+            } else {
                 return PROBABILITIES.get(s2);
             }
         }
@@ -55,26 +86,9 @@ public class CalcProb {
      * @return the probability that we win.
      */
     public static double calcProb(List<String> cards, List<String> commonCards, boolean guessingOpponent) {
-        if (cards.size() == 0) {
+        if (commonCards.size() == 0) {
             return rawProb(cards.get(0), cards.get(1));
-        }
-        else if (cards.size() == 5) {
-            List<String> rest = new ArrayList<String>(List.copyOf(cards));
-            for (String card: cards) {
-                rest.remove(card);
-            }
-            for (String card: commonCards) {
-                rest.remove(card);
-            }
-            int score = 0;
-            for (int i = 0; i < rest.size(); i++) {
-                for (int j = i + 1; j < rest.size(); j++) {
-                    score += winOrLose(cards, commonCards, List.of(rest.get(i), rest.get(j)), List.of());
-                }
-            }
-            return (double)(score) / (44 * 45);
-        }
-        else {
+        } else {
             List<String> rest = new ArrayList<String>(List.copyOf(cards));
             for (String card: cards) {
                 rest.remove(card);
@@ -87,7 +101,7 @@ public class CalcProb {
             for (int i = 0; i < iteration; i++) {
                 score += winOrLose(cards, commonCards, List.of(), List.of());
             }
-            return (double)(score) / iteration;
+            return (double)(score) / (2*iteration);
         }
     }
     /**
@@ -99,37 +113,30 @@ public class CalcProb {
      * @return An integer, indicating if we won or not
      */
     public static int winOrLose(List<String> ourHand, List<String> currentCommon, List<String> opponentHand, List<String >rest) {
-        List<String> ourCards = new ArrayList<String>(List.copyOf(ourHand));
-        List<String> opponentCards = new ArrayList<String>(List.copyOf(opponentHand));
+        List<String> opponentCards;
+        List<String> community;
         if (opponentHand.size() == 0) {
+        	opponentCards = new ArrayList<String>();
             if (rest.size() == 0) {
                 rest = new ArrayList<String>(Deck);
-                for (String card: ourHand) {
-                    rest.remove(card);
-                }
-                for (String card: opponentHand) {
-                    rest.remove(card);
-                }
-                for (String card: currentCommon) {
-                    rest.remove(card);
+                List<String> seen=new ArrayList<>(ourHand);
+                seen.addAll(currentCommon);
+                for (String card: seen) {
+                	rest.remove(card);
                 }
             }
             Collections.shuffle(rest);
             int comm = 5 - currentCommon.size();
             int opp = 2 - opponentHand.size();
-            List<String> community = new ArrayList<String>(List.copyOf(currentCommon));
+            community = new ArrayList<String>(currentCommon);
             community.addAll(rest.subList(0, comm));
-            opponentCards.addAll(rest.subList(comm, comm + opp));
-            ourCards.addAll(community);
-            opponentCards.addAll(community);
+            opponentCards=rest.subList(comm, comm + opp);
+        } else {
+        	opponentCards = opponentHand;
+        	community=currentCommon;
         }
-        else {
-            ourCards.addAll(currentCommon);
-            opponentCards.addAll(currentCommon);
-        }
-        
-        int ourHandValue = FakeEval7.handScore(ourCards);
-        int oppHandValue = FakeEval7.handScore(opponentCards);
+        int ourHandValue = FakeEval7.score(ourHand,community);
+        int oppHandValue = FakeEval7.score(opponentCards,community);
         
         if (ourHandValue > oppHandValue) {
             return 2;
