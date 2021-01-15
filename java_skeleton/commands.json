@@ -1,5 +1,6 @@
 {
-    "build": ["javac", "-classpath", "./src", "src/javabot/Player.java"],
+    "build": ["javac", "-classpath", "./src",
+	      "src/javabot/Player.java"],
 
     "run": ["java", "-classpath", "./src", "javabot.Player"]
 }

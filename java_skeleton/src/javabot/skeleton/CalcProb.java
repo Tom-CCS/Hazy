@@ -18,7 +18,7 @@ public class CalcProb {
     private static Map<String,Double> PROBABILITIES = new HashMap<>();
 	static{
 		JSONParser jsonParser = new JSONParser();
-		try (FileReader reader = new FileReader("src\\javabot\\skeleton\\rawProb.json")) {
+		try (FileReader reader = new FileReader("src/javabot/skeleton/rawProb.json")) {
 	        // Read JSON file
 	        Object obj = jsonParser.parse(reader);
 	

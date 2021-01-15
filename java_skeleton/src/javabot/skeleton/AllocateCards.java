@@ -1,6 +1,7 @@
 package javabot.skeleton;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class AllocateCards {
@@ -27,7 +28,8 @@ public class AllocateCards {
                 }
             }
         }
-        List<String> rest = new ArrayList(List.of(myCards));
+        
+        List<String> rest = new ArrayList(Collections.unmodifiableList(myCards));
         rest.removeAll(best);
         
         double secondMaxProb = 0;
@@ -43,7 +45,7 @@ public class AllocateCards {
             }
         }
         // Extract the worst pair
-        List<String> worst = new ArrayList(List.of(rest));
+        List<String> worst = new ArrayList(Collections.unmodifiableList(rest));
         worst.removeAll(secondBest);
         worst = List.of(worst.get(0), worst.get(1));
         

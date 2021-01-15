@@ -33,9 +33,9 @@ public class Player implements Bot {
     private static final List<Map<String, Double>> algorithms = 
             List.of(algoTIMID, algoNORMAL, algoAGGRESSIVE);
     // Card Allocation
-    private List<String>[] boardAllocations; 
+    private List<List<String>> boardAllocations; 
     // Whether we are playing each board
-    private boolean[] playing;
+    private boolean[] playing = new boolean[numBoard];
     // Counters
     private int largeRaiseCount;
     private int roundCount;
@@ -59,7 +59,19 @@ public class Player implements Bot {
      * @param cards the cards we have
      */
     private void allocateCards(List<String> cards) {
-        //TODO: Awaiting implementation
+        this.boardAllocations = new ArrayList<>();
+        List<List<String>> allocation = AllocateCards.allocate(cards);
+        //System.out.println(allocation);
+        int highestPlaying = allocation.get(numBoard).size();
+        for (int i = 0; i < numBoard; i++) {
+            this.boardAllocations.add(allocation.get(i));
+            if (i <= highestPlaying) {
+                this.playing[i] = true;
+            }
+            else {
+                this.playing[i] = false;
+            }
+        }
     }
     
     /**
@@ -196,7 +208,7 @@ public class Player implements Bot {
             Set<ActionType> legalBoardActions = legalActions.get(i);
             if (legalBoardActions.contains(ActionType.ASSIGN_ACTION_TYPE)) { 
                 // default assignment of hands to boards
-                myActions.add(new Action(ActionType.ASSIGN_ACTION_TYPE, this.boardAllocations[i]));
+                myActions.add(new Action(ActionType.ASSIGN_ACTION_TYPE, this.boardAllocations.get(i)));
             }
             else if (roundState.boardStates.get(i) instanceof TerminalState) { 
                 // The board has Terminated
@@ -223,7 +235,7 @@ public class Player implements Bot {
                 
                 List<String> streetCard = boardCards.get(i);
                 // Calculate unbiased probability
-                double winProb = CalcProb.calcProb(this.boardAllocations[i], streetCard, false);
+                double winProb = CalcProb.calcProb(this.boardAllocations.get(i), streetCard, false);
                 // Choose Algorithm
                 Algo chosenAlgo;
                 if (BehaviourStudy.isAllIn(this.largeRaiseCount, this.roundCount)) {
