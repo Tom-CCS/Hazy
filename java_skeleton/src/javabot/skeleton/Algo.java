@@ -18,10 +18,10 @@ public class Algo {
             how large we should raise. Set to 0.4
             The formula for raising is my_pips + cont_cost + RAISE_RATIO * (current_pot + cont_cost)
      */
-    private double INTIMIDATE_PROB = 1.0;
-    private double INTIMIDATE_DEC = 0.5;
-    private double RAISE_THRES = 0.5;
-    private double RAISE_RATIO = 0.4;
+    protected double INTIMIDATE_PROB = 1.0;
+    protected double INTIMIDATE_DEC = 0.5;
+    protected double RAISE_THRES = 0.5;
+    protected double RAISE_RATIO = 0.4;
     
     /**
      * Use Default parameters.
@@ -42,7 +42,7 @@ public class Algo {
      * @param raise the ratio the opponent raised
      * @return how much we should lower our expected raise ratio
      */
-    private double intimidateDec(double raise) {
+    protected double intimidateDec(double raise) {
         return Math.pow(2, -INTIMIDATE_DEC * raise);
     }
           
