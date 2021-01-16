@@ -19,6 +19,32 @@ public class FakeEval7 {
 		}
 	}
 	
+	/**
+	 * Calculate the rank of the cards
+	 * @param ours: our cards (2 strings)
+	 * @param common: the common cards (3~5 strings)
+	 * @return an integer, indicate the largest possible type of my cards + common 5 cards
+	 */
+	public static int type(List<String> ours, List<String> common){
+		int max=0;
+		int n=common.size();
+		List<String> ls=new ArrayList<>(ours);
+		ls.addAll(common);
+		int score;
+		for (int i=0;i<n-2;i++) {
+			for (int j=i+1;j<n-1;j++) {
+				for (int k=j+1;k<n;k++) {
+					for (int l=k+1;l<n+1;l++) {
+						for (int m=l+1;m<n+2;m++) {
+							score = handType(List.of(ls.get(i),ls.get(j),ls.get(k),ls.get(l),ls.get(m)));
+							max = score>max? score : max;
+						}
+					}
+				}
+			}
+		}
+		return max;
+	}
 	
 	/**
 	 * Calculate the rank of the cards
@@ -45,6 +71,50 @@ public class FakeEval7 {
 			}
 		}
 		return max;
+	}
+	
+	/**
+	 * Calculate the type of largest combination of the cards
+	 * @param cards: a set of 5 cards (represented by strings)
+	 * @return an integer, the largest possible score of my cards + common 5 cards
+	 * The score is defined by:
+	 * 10 classes of cards: 
+     * royal_flush/straight_flush=9; four_of_a_kind=8; full_house=7;
+     * flush=6; straight=5; three_of_a_kind=4; two_pairs=3; one_pair=2;
+     * high_card=1
+	 * class<<20 + 1st kicker (if any)<<16+ 2nd kicker (if any)<<12 + ... +5th kicker (is any) <<0
+	 */
+	public static int handType(List<String> cards) {
+	    Map<Integer, Integer> cardDict=toMap(cards);
+	    Set<Integer> ranks=cardDict.keySet();
+	    int straightIndicator=isStraight(cards);
+	    int mag;
+	    if(isFlush(cards)) {
+	        if (straightIndicator>0) {
+	            return 9;
+	            // A royal flush or A straight flush
+	        } else { // a flush
+	            return 6;
+	        }
+	    } else {
+	        if (straightIndicator>0) return 5;// a straight
+	        else {
+	        	Collection<Integer> values=cardDict.values();
+	            if(values.contains(4)) {return 8;
+	            } else if (values.contains(3)) {// 3 of a kind or full house
+	                if (values.contains(2)){return 7; //Full House
+	                } else { return 4;// Three of a kind 
+	                }
+	            } else if (values.contains(2)) {// One pair or two pairs:
+	            	int pairNum=0;
+	            	for(int k:ranks) {
+	                    if (cardDict.get(k)==2) pairNum+=1;}
+	                return pairNum+1;
+	            } else {
+	                return 1;
+	            }
+	        }
+	    }
 	}
 	
 	/**
