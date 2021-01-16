@@ -7,14 +7,30 @@ import java.util.List;
 public class Guessing {
 	private Set<String> singles = new HashSet<>();
 	// A set of SINGLE cards
-	// The cards that can make a pair, 3 of a kind, straight, etc
+	// The cards that can make a good hand, such as pairs
+	// The cards here ONLY CONTAIN THE NUMBER OF THE CARD
 	private Set<String> potentialSingles = new HashSet<>();
-	// the cards that can 
+	// the cards that can potential make a really good hand, such that make a straight
+	// but less than 1.
+	// It should be EMPTY if state=5
 	private Set<String> strongSingles = new HashSet<>();
+	// It is applicable to be in state=3,4
+	// It contains the cards (WITH SUIT) that forms a really good hand 
+	// such as >=3 of a kind 
+	// excluded the cards in singles
 	private String majorSuit;
+	// It is defined as the most likely suit to have a flush.
+	// 3, 4: suit of two
+	// 5: suit of three of the same suit
 	private String majorSuit2;
+	// If there are four cards on 
 	private Set<String> doubles = new HashSet<>();
+	// The pairs of cards that can potentially make a good hand.
+	// DOES NOT include cases above.
+	private List<String> common;
+	// The common cards on the board
 	private int state=3;
+	// The state for the board.
 	
 	/**
 	 * Initial three cards on the board
