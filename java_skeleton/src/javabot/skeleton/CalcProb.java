@@ -127,13 +127,13 @@ public class CalcProb {
             }
             Collections.shuffle(rest);
             int comm = 5 - currentCommon.size();
-            int opp = 2 - opponentHand.size();
+            int opp = 2;
             community = new ArrayList<String>(currentCommon);
             community.addAll(rest.subList(0, comm));
             opponentCards=rest.subList(comm, comm + opp);
         } else {
         	opponentCards = opponentHand;
-        	community=currentCommon;
+        	community = currentCommon;
         }
         int ourHandValue = FakeEval7.score(ourHand,community);
         int oppHandValue = FakeEval7.score(opponentCards,community);

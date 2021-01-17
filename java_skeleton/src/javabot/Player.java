@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Set;
 import java.lang.Integer;
@@ -145,6 +146,10 @@ public class Player implements Bot {
                     this.algoProb.set(i, newProb);
                 }
             }
+            else {
+                // We are losing, attempt most aggressive style
+                this.algoProb = List.of(0.2, 0.2, 0.6);
+            }
             System.out.println(this.algoProb);
         }
         //List<List<String>> myCards = new ArrayList<List<String>>();
@@ -184,7 +189,15 @@ public class Player implements Bot {
                  BoardState boardState = (BoardState)roundState.boardStates.get(i);
                  myPips[i] = boardState.pips.get(active);
                  oppPips[i] = boardState.pips.get(1-active);
-                 boardCards.add(boardState.deck);
+                 // Trim away all the unrevealed cards
+                 List<String> untrimmedCards = boardState.deck;
+                 List<String> trimmedCards = new ArrayList<>();
+                 for (String s: untrimmedCards) {
+                    if (s.length() > 0) {
+                        trimmedCards.add(s);
+                    }
+                 }
+                 boardCards.add(Collections.unmodifiableList(trimmedCards));
             } else {  // someone already folded on this board
                  TerminalState terminalBoardState = (TerminalState)roundState.boardStates.get(i);
                  myPips[i] = 0;
@@ -216,11 +229,11 @@ public class Player implements Bot {
             } else if (!this.playing[i]) {
                 // We are giving up the board
                 if (legalBoardActions.contains(ActionType.FOLD_ACTION_TYPE)) {
-                    myActions.set(i, new Action(ActionType.FOLD_ACTION_TYPE));
+                    myActions.add(new Action(ActionType.FOLD_ACTION_TYPE));
                     totalRaiseReserve += continueCost[i];
                 }
                 else {
-                    myActions.set(i, new Action(ActionType.CHECK_ACTION_TYPE));
+                    myActions.add(new Action(ActionType.CHECK_ACTION_TYPE));
                 }
             }
             else {
@@ -248,17 +261,17 @@ public class Player implements Bot {
                         boardContCost, List.of(minRaise, Math.min(maxRaise, totalRaiseReserve)));
                 // Return Action
                 if (legalBoardActions.contains(ActionType.RAISE_ACTION_TYPE) && raiseAmount > 0) {
-                    myActions.set(i, new Action(ActionType.RAISE_ACTION_TYPE, raiseAmount));
+                    myActions.add(new Action(ActionType.RAISE_ACTION_TYPE, raiseAmount));
                     totalRaiseReserve -= raiseAmount;
                 }
-                else if (legalBoardActions.contains(ActionType.CALL_ACTION_TYPE) && raiseAmount > 0) {
-                    myActions.set(i, new Action(ActionType.CALL_ACTION_TYPE, raiseAmount));
+                else if (legalBoardActions.contains(ActionType.CALL_ACTION_TYPE) && raiseAmount >= 0) {
+                    myActions.add(new Action(ActionType.CALL_ACTION_TYPE, raiseAmount));
                 }
-                else if (legalBoardActions.contains(ActionType.CHECK_ACTION_TYPE) && raiseAmount > 0) {
-                    myActions.set(i, new Action(ActionType.CHECK_ACTION_TYPE, raiseAmount));
+                else if (legalBoardActions.contains(ActionType.CHECK_ACTION_TYPE) && raiseAmount >= 0) {
+                    myActions.add(new Action(ActionType.CHECK_ACTION_TYPE, raiseAmount));
                 }
                 else {
-                    myActions.set(i, new Action(ActionType.FOLD_ACTION_TYPE, raiseAmount));
+                    myActions.add(new Action(ActionType.FOLD_ACTION_TYPE, raiseAmount));
                     totalRaiseReserve += boardContCost;
                 }
             }
