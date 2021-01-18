@@ -19,6 +19,7 @@ with open(filename, "r") as f:
     line_cnt = 0
     number_of_raise = {'A':0,'B':0}
     total_of_raise = {'A':0,'B':0}
+    bet_ratios = {'A':[],'B':[]}
     raise_ratios = {'A':[],'B':[]}
     number_of_folds = {'A':0,'B':0}
     preflop_folds = {'A':0, 'B':0}
@@ -115,6 +116,8 @@ with open(filename, "r") as f:
                     board_pots[board] += amount
                     number_of_raise[player] += 1
                     total_of_raise[player] += amount
+                    # The amount the player bets before the raise
+                    bet_ratios[player].append(amount / board_pots[board])
 
                 #endgame awards
                 elif words[1] == "awarded":
@@ -134,6 +137,11 @@ pl.hist(raise_ratios['A'], bins = 40, label="A")
 pl.hist(raise_ratios['B'], bins = 40, label="B")
 pl.legend()
 pl.savefig("raise_ratio.png")
+pl.clf()
+pl.hist(bet_ratios['A'], bins = 40, label="A")
+pl.hist(bet_ratios['B'], bins = 40, label="B")
+pl.legend()
+pl.savefig("bet_ratio.png")
 #print specialize statistics
 print("Number of preflop folds:", preflop_folds)
 for player in total_of_raise:
