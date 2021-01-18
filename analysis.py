@@ -25,6 +25,7 @@ with open(filename, "r") as f:
     preflop_folds = {'A':0, 'B':0}
     all_raises = {'A':[], 'B': []}
     awards = {'A': [], 'B': []}
+    awards_diff = []
     #read until EOF
     while len(line) > 0:
         #read until the next blank line, which marks the end of the game
@@ -142,6 +143,11 @@ pl.hist(bet_ratios['A'], bins = 40, label="A")
 pl.hist(bet_ratios['B'], bins = 40, label="B")
 pl.legend()
 pl.savefig("bet_ratio.png")
+awards_diff = [sum(awards["A"][:i]) - sum(awards["B"][:i]) for i in range(len(awards["A"]))]
+pl.clf()
+pl.plot(awards_diff)
+pl.savefig("awards_over_time.png")
+pl.clf()
 #print specialize statistics
 print("Number of preflop folds:", preflop_folds)
 for player in total_of_raise:
