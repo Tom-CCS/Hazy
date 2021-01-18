@@ -123,7 +123,7 @@ public class Player implements Bot {
         RoundState previousState = (RoundState)(terminalState.previousState);  // RoundState before payoffs
         int street = previousState.street;  // 0, 3, 4, or 5 representing when this round ended
         double gameClock = gameState.gameClock;
-        if (this.roundCount == numRounds) {
+        if (this.roundCount % 100 == 0) {
             System.out.println(gameClock);
         }
         // update the gains of each algorithm
