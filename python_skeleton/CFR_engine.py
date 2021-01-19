@@ -62,7 +62,6 @@ def getBucket(raw_prob, street, oppo_action):
 
 STACK = 200
 def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
-    print(street, street_history)
     """
     A single node of the recursive CFR algorithm
     Params:
@@ -103,7 +102,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     else:
         oppo_action = "C"
     #detecting double raise
-    if len(street_history) >= 2 and street_history[-2] in ["S", "L"] and street_history[-1] in ["S", "L"]:
+    if len(street_history) >= 2 and street_history[-2] == "S" and street_history[-1] == "S":
         oppo_action = "D"
     #extracted precomputed
     win_prob = raw_p[player][street]
@@ -200,7 +199,9 @@ def run_CFR():
                     for action in ALL_IN_ACTIONS:
                         actions[player][bucket][action] = 1 / len(ALL_IN_ACTIONS)
                         regrets[player][bucket][action] = 0
-    for _ in range(ITER):
+    # iterations of CFR
+    for iter in range(ITER):
+        print(iter)
         print(actions)
         print(regrets)
         # shuffle the deck
@@ -208,15 +209,12 @@ def run_CFR():
         deck.shuffle()
         hands = [deal_str(deck, 2), deal_str(deck, 2)]
         street_cards = deck.deal(5)
-        print(hands, street_cards)
         # precompute probability array
         raw_p = {0:{}, 1:{}}
         for player in [0,1]:
             for street in [0,3,4,5]:
-                print(street)
                 raw_p[player][street] = calc_prob(hands[player], street_cards[:street])
         result = win_or_lose(hands[0], street_cards, hands[1])
-        print(raw_p, result)
         if result == 2:
             winner = 0
         elif result == 0:
