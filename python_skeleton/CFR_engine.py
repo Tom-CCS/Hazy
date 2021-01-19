@@ -21,6 +21,10 @@ import json
 # plus the corresponding probability
 # we will train this set
 available_action = {}
+#Raw Probability of winning: 0 - 0.5(S), 0.5 - 0.65(M), 0.65 - 1(L)
+#Opponent Action Types: Check/Call(C), Small Raise(S), Large Raise(L), Double Raise(D)
+#Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
+
 def getBucket(our_hand, oppo_hand, street, oppo_action):
     '''
     Given the situation on the board, return the bucket this situation corresponds to
@@ -37,7 +41,7 @@ def getBucket(our_hand, oppo_hand, street, oppo_action):
         A label for the bucket this situation corresponds to
     '''
 
-def CFR(cards, p1, p2, history):
+def GameState(cards, p1, p2, history):
     """
     A single iteration of the recursive CFR algorithm
     Params:
