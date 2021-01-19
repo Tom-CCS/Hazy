@@ -36,7 +36,7 @@ OPPO_BUCKET = ["C", "S", "L", "D"]
 ACTIONS = ["F", "C", "S", "L"]
 ALL_IN_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 10000
+ITER = 100
 
 def getBucket(raw_prob, street, oppo_action):
     '''
@@ -61,7 +61,10 @@ def getBucket(raw_prob, street, oppo_action):
     return prob_label + oppo_action
 
 STACK = 200
+CFR_calls = 0
 def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
+    global CFR_calls
+    CFR_calls += 1
     """
     A single node of the recursive CFR algorithm
     Params:
@@ -109,6 +112,13 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     #compute the bucket of the current state
     bucket = getBucket(win_prob, street, oppo_action)
     action_prob = copy(actions[player][bucket]) # a map taking each action to its probability
+    # we do not consider >= 4 bets, thus if this happens we merge the raises as checks
+    forced_break = False
+    if len(street_history) == 3 and oppo_action == "D":
+        forced_break = True
+        action_prob["C"] = action_prob["C"] + action_prob["S"] + action_prob["L"]
+        del action_prob["S"]
+        del action_prob["L"]
     util = {} # the expected util array, mapping each action to the expected util
     node_util = {0:0, 1:0} # the expected util for both players at this point
     for action in action_prob:
@@ -138,40 +148,36 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             new_pots= {}
             new_pots[oppo] = pots[oppo]
             pot_sum = 2 * new_pots[oppo]
-            # we do not consider >= 4 bets, thus if this happens we regard the raise as a check
-            if len(street_history) == 3:
-                new_pots[player] = pots[oppo]
-                next_street = street + 1 if street != 0 else 3
-                # Advance to next street
-                util[action] = CFR(deck, new_pots, next_street, "", 0, next_prob[0], next_prob[1], raw_p, winner)
+            if action == "S":
+                # raise to 0.66 the amount of stuff
+                new_pots[player] = min(new_pots[oppo] + int(0.66 * pot_sum), STACK)
             else:
-                if action == "S":
-                    # raise to 0.66 the amount of stuff
-                    new_pots[player] = min(new_pots[oppo] + int(0.66 * pot_sum), STACK)
-                else:
-                    # all in
-                    new_pots[player] = STACK
-                util[action] = CFR(deck, new_pots, street, street_history + action, 0, next_prob[0], next_prob[1], raw_p, winner)
+                # all in
+                new_pots[player] = STACK
+            util[action] = CFR(deck, new_pots, street, street_history + action, 0, next_prob[0], next_prob[1], raw_p, winner)
     # We have computed the util of each action
     # Compute expected util
     for action in action_prob:
         node_util[0] += util[action][0] * action_prob[action]
         node_util[1] += util[action][1] * action_prob[action]
     # Update culmultative regret
-    for action in action_prob:
-        regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
-    # Update strategy
-    strategy = {}
-    normalizing_sum = 0
-    for action in action_prob:
-        strategy[action] = max(regrets[player][bucket][action], 0)
-        normalizing_sum += strategy[action]
-    for action in action_prob:
-        if normalizing_sum > 0:
-            strategy[action] /= normalizing_sum
-        else:
-            strategy[action] = 1 / len(action_prob)
-    actions[player][bucket] = strategy
+    # i haven't thought about how to update in the special case of consecutive raises
+    # so i just don't update for now...
+    if not forced_break:
+        for action in action_prob:
+            regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
+        # Update strategy
+        strategy = {}
+        normalizing_sum = 0
+        for action in action_prob:
+            strategy[action] = max(regrets[player][bucket][action], 0)
+            normalizing_sum += strategy[action]
+        for action in action_prob:
+            if normalizing_sum > 0:
+                strategy[action] /= normalizing_sum
+            else:
+                strategy[action] = 1 / len(action_prob)
+        actions[player][bucket] = strategy
     return node_util
 
 def deal_str(deck, sz):
@@ -224,6 +230,7 @@ def run_CFR():
         # Run Magic
         util = CFR(deck, [1, 2], 0, "", 0, 1, 1, raw_p, winner)
         print(util)
+        print(CFR_calls)
 
 run_CFR()
 
