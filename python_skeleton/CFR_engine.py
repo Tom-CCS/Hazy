@@ -34,6 +34,7 @@ PROB_BUCKET = ["S", "M", "L"]
 OPPO_BUCKET = ["C", "S", "L", "D"]
 #Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
 ACTIONS = ["F", "C", "S", "L"]
+ALL_IN_ACTIONS = ["F", "C"]
 #Number of iterations
 ITER = 10000
 
@@ -61,6 +62,7 @@ def getBucket(raw_prob, street, oppo_action):
 
 STACK = 200
 def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
+    print(street, street_history)
     """
     A single node of the recursive CFR algorithm
     Params:
@@ -113,13 +115,13 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     for action in action_prob:
         #For each action, recursively call cfr with additional history and probability
         # the probability of entering this action
-        node_prob = (p1 * action_prob[action], p2) if player == 0 else (p1, p2 * action_prob[action])
+        next_prob = (p1 * action_prob[action], p2) if player == 0 else (p1, p2 * action_prob[action])
         # simply cutoff the game after the fourth raise
         # folds
         if action == "F":
             util["F"] = {player: -pots[player], oppo: pots[player]}
         # checks / calls
-        if action == "C":
+        elif action == "C":
             new_pots = {}
             new_pots[player] = max(pots[player], pots[oppo])
             new_pots[oppo] = pots[oppo]
@@ -127,22 +129,22 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             if len(street_history) >= 1:
                 # In this case, advances to the next street
                 next_street = street + 1 if street != 0 else 3
-                util["C"] = CFR(deck, new_pots, next_street, "", 0, node_prob[0], node_prob[1], raw_p, winner)
+                util["C"] = CFR(deck, new_pots, next_street, "", 0, next_prob[0], next_prob[1], raw_p, winner)
             # the opponent has not moved
             else:
                 # give control to the opponent
-                util["C"] = CFR(deck, new_pots, street, "C", oppo, node_prob[0], node_prob[1], raw_p, winner)
+                util["C"] = CFR(deck, new_pots, street, "C", oppo, next_prob[0], next_prob[1], raw_p, winner)
         # raises
         else:
             new_pots= {}
             new_pots[oppo] = pots[oppo]
             pot_sum = 2 * new_pots[oppo]
             # we do not consider >= 4 bets, thus if this happens we regard the raise as a check
-            if len(street_history) == 4:
+            if len(street_history) == 3:
                 new_pots[player] = pots[oppo]
                 next_street = street + 1 if street != 0 else 3
                 # Advance to next street
-                util[action] = CFR(deck, new_pots, next_street, "", 0, node_prob[0], node_prob[1], raw_p, winner)
+                util[action] = CFR(deck, new_pots, next_street, "", 0, next_prob[0], next_prob[1], raw_p, winner)
             else:
                 if action == "S":
                     # raise to 0.66 the amount of stuff
@@ -150,7 +152,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
                 else:
                     # all in
                     new_pots[player] = STACK
-                util[action] = CFR(deck, new_pots, street, street_history + action, 0, node_prob[0], node_prob[1], raw_p, winner)
+                util[action] = CFR(deck, new_pots, street, street_history + action, 0, next_prob[0], next_prob[1], raw_p, winner)
     # We have computed the util of each action
     # Compute expected util
     for action in action_prob:
@@ -158,7 +160,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
         node_util[1] += util[action][1] * action_prob[action]
     # Update culmultative regret
     for action in action_prob:
-        regrets[player][bucket][action] += node_prob[oppo] * (util[action][player] - node_util[player])
+        regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
     # Update strategy
     strategy = {}
     normalizing_sum = 0
@@ -188,25 +190,33 @@ def run_CFR():
                 bucket = prob_type + oppo_act
                 actions[player][bucket] = {}
                 regrets[player][bucket] = {}
-                for action in ACTIONS:
-                    actions[player][bucket][action] = 1 / len(ACTIONS)
-                    regrets[player][bucket][action] = 0
+                if oppo_act != 'L':
+                    # is not a all in; all actions allowed
+                    for action in ACTIONS:
+                        actions[player][bucket][action] = 1 / len(ACTIONS)
+                        regrets[player][bucket][action] = 0
+                else:
+                    # is all in; only check and fold
+                    for action in ALL_IN_ACTIONS:
+                        actions[player][bucket][action] = 1 / len(ALL_IN_ACTIONS)
+                        regrets[player][bucket][action] = 0
     for _ in range(ITER):
+        print(actions)
+        print(regrets)
         # shuffle the deck
         deck = eval7.Deck()
         deck.shuffle()
         hands = [deal_str(deck, 2), deal_str(deck, 2)]
-        street_cards = deal_str(deck, 5)
+        street_cards = deck.deal(5)
         print(hands, street_cards)
         # precompute probability array
         raw_p = {0:{}, 1:{}}
         for player in [0,1]:
             for street in [0,3,4,5]:
-                if street == 0:
-                    raw_p[player][street] = raw_prob(hands[player][0], hands[player][1])
-                else:
-                    raw_p[player][street] = calc_prob(hands, street_cards[:street])
+                print(street)
+                raw_p[player][street] = calc_prob(hands[player], street_cards[:street])
         result = win_or_lose(hands[0], street_cards, hands[1])
+        print(raw_p, result)
         if result == 2:
             winner = 0
         elif result == 0:
@@ -216,8 +226,6 @@ def run_CFR():
         # Run Magic
         util = CFR(deck, [1, 2], 0, "", 0, 1, 1, raw_p, winner)
         print(util)
-        print(actions)
-        print(regrets)
 
 run_CFR()
 
