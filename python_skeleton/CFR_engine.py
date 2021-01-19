@@ -25,14 +25,12 @@ available_action = {}
 #Opponent Action Types: Check/Call(C), Small Raise(S), Large Raise(L), Double Raise(D)
 #Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
 
-def getBucket(our_hand, oppo_hand, street, oppo_action):
+def getBucket(raw_prob, street, oppo_action):
     '''
     Given the situation on the board, return the bucket this situation corresponds to
     Params:
-        our_hand:
-        list of strings. The cards in our hand
-        oppo_hand:
-        list of strings. The cards in the opponent's hand
+        raw_prob:
+        Double, the raw probability of winning.(This will be precomputed to save time)
         street:
         list of strings. The cards in the street
         oppo_action:
@@ -40,6 +38,14 @@ def getBucket(our_hand, oppo_hand, street, oppo_action):
     Returns:
         A label for the bucket this situation corresponds to
     '''
+    if raw_prob < 0.5:
+        prob_label = 'S'
+    elif raw_prob < 0.65:
+        prob_label = 'M'
+    else:
+        prob_label = 'L'
+
+    return prob_label + oppo_action
 
 def GameState(cards, p1, p2, history):
     """
