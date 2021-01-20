@@ -14,7 +14,7 @@ class Guessing:
         ours: our cards, a list of 2 strs
         Update the class.
         '''
-        self.single=set()
+        self.singles=set()
         # A set of SINGLE cards (ints)
         # The cards that can make a good hand, such as pairs
         # The cards here ONLY CONTAIN THE NUMBER OF THE CARD
@@ -27,6 +27,9 @@ class Guessing:
         # It contains the cards (WITH SUIT) that forms a really good hand 
         # such as >=3 of a kind 
         # excluded the cards in singles
+        
+        # A card can be in one or two sets of single or potentialSiggles,
+        # But never be in strongSingles and another singles
         self.majorSuit = None
         # It is defined as the most likely suit (str) to have a flush.
         # 3, 4: suit of two
@@ -51,7 +54,7 @@ class Guessing:
         # Count hou many cards for a certain ranks / suits have
         self.rank2num={}
         num=2
-        for i in "23456789TJKQA":
+        for i in "23456789TJQKA":
             self.rank2num[i]=num
             self.leftRanks[num]=4
             num+=1
@@ -60,23 +63,26 @@ class Guessing:
     def initialGuess(self):
         # Initialize the informations
         for card in self.common:
-            if card[0] in self.ranks.keys():
-                self.ranks[card]+=1
-            else: self.ranks[card]=1
-            self.leftRanks[card[0]]-=1
+            if self.rank2num[card[0]] in self.ranks.keys():
+                self.ranks[self.rank2num[card[0]]]+=1
+            else: self.ranks[self.rank2num[card[0]]]=1
+            self.leftRanks[self.rank2num[card[0]]]-=1
             if card[1] in self.suits.keys():
-                self.suits[card]+=1
-            else: self.suits[card]=1
+                self.suits[card[1]]+=1
+            else: self.suits[card[1]]=1
+            self.leftSuits[card[1]]-=1
+        for card in self.ours:
+            self.leftRanks[self.rank2num[card[0]]]-=1
             self.leftSuits[card[1]]-=1
         
         # A pair of Ace or triples are really stong, otherwise, just so so
         for rank in self.ranks.keys():
-            if rank=="A" or self.ranks[rank]>=2:
+            if rank==14 or self.ranks[rank]>=2:
                 self.strongSingles.add(rank)
-            else: self.single.add(rank)
+            else: self.singles.add(rank)
         
         # Find the potential straights
-        smallStraight=self.find_straight()[0]
+        smallStraight=self.findStraight()[0]
         for rank in smallStraight:
             self.potentialSingles.add(rank)
         
@@ -90,24 +96,59 @@ class Guessing:
         '''
         Returns
         Two sets of ranks(int): small straight and big straight.
-        small straight: if n n+1 n+2 are in and n-1 and n+3 are not, put n-1
-        and n+3 in the small straight (if applicable)
+        small straight: if three of n n+1 n+2 n+3 are in and n-1 and n+4 are 
+        not, put the rest one in the small straight (if applicable)
         big straight: if n n+1 n+2 n+3 are in and n-1 and n+4 are not, put
         these two in the big straight. If n, n+4 are in and two of n+1, n+2,
         n+3 are in, put the third in.
         '''
         smallStraight=set()
         bigStraight=set()
-        if self.state==3:
-            # In this state, bigStraight must be empty
-            pass
-        elif self.state==4:
-            pass
+        ranks=set(self.ranks.keys())
+        if len(ranks)<3:
+            return set(), set()
         else:
-            # In this state, small straight are meaningless, so only calc for
-            # big straight
-            pass
-        return smallStraight, bigStraight
+            for i in range(2,13):
+                if i in ranks:
+                    # n n+1 n+2 small straight
+                    if i in ranks and i+1 in ranks and i+2 in ranks:
+                        smallStraight.add((i-3)%13+2)
+                        if i<12: smallStraight.add(i+3)
+                    
+                    # n n+1/n+2 n+3 small straight
+                    if i<12 and i+3 in ranks: 
+                        if i+1 in ranks: smallStraight.add(i+2)
+                        if i+2 in ranks: smallStraight.add(i+1)
+                    
+            if 14 in ranks and 2 in ranks:
+                if 4 in ranks: smallStraight.add(3)
+                if 3 in ranks: smallStraight.add(4)
+            
+            smallStraight.difference_update(ranks)
+            
+            # state-3 will not have big straight
+            if self.state==3: return smallStraight, set()
+            
+            if len(ranks)>=4:
+                # 4 of the 5 of a straight is gathered.
+                for i in ranks:
+                    if len(ranks.intersection({i,i+1,i+2,i+3,i+4}))==4:
+                        if i+4 not in ranks:
+                            if i!=11: bigStraight.add(i+4)
+                            bigStraight.add((i-3)%13+2)
+                        else:
+                            bigStraight.add((5*i+10)-sum(ranks.intersection({i,i+1,i+2,i+3,i+4})))
+                
+                if ranks.intersection({14,2,3,4,5})==4:
+                    bigStraight.add(28-sum(ranks.intersection({14,2,3,4,5})))
+                        
+                bigStraight.difference_update(ranks)
+                smallStraight.difference_update(bigStraight)
+            
+            if self.state==4:
+                return smallStraight, bigStraight
+            else:
+                return set(), bigStraight
     
     def update3To4(self,fourth):
         '''
@@ -117,7 +158,44 @@ class Guessing:
         NOTE: if okay, report the change
         '''
         self.state+=1
-        pass
+        for card in self.ours:
+            self.leftRanks[self.rank2num[fourth[0]]]-=1
+            self.leftSuits[fourth[1]]-=1
+        # rising=set()
+        
+        # update for suits
+        suit=fourth[1]
+        if suit not in self.suits.keys():
+            self.suits[suit]=1
+        else:
+            self.suits[suit]+=1
+        if self.suits[suit]==2:
+            # 2 cases, 2+2 or 1+1+2
+            if 1 in self.suits.values:
+                self.majorSuit=suit
+            else:self.majorSuit2=suit
+        
+        # update for ranks
+        rank=self.rank2num[fourth[0]]
+        self.leftRanks[rank]-=1
+        if rank not in self.singles.keys():
+            if rank!=14:
+                self.strongSingles.add(rank) # only one pair
+            else: self.singles.add(rank)
+        else: # at least 3 of a kind
+            self.singles.remove(rank)
+            self.strongSingles.add(rank)
+        # if self.ranks[rank]==2:
+        #    rise.add(rank)
+        
+        # take care of straights
+        smallStraight, bigStraight=self.findStraight()
+        # for rank in bigStraight:
+        #     if rank not in strongSingles:
+        #         rise.add(rank)
+        self.strongSingles|=bigStraight
+        self.potentialSingles|=smallStraight
+        self.potentialSingles.difference_update(self.strongSingles)
     
     def update4To5(self,fifth):
         '''
@@ -127,15 +205,51 @@ class Guessing:
         NOTE: if okay, report the change.
         '''
         self.state+=1
-        pass
-    
-    def taheAction(self,action):
+        suit=fifth[1]
+        # rise=set()
+        
+        # update for suits
+        if suit not in self.suits.keys():
+            self.suits[suit]=1
+        else:
+            self.suits[suit]+=1
+        if 3 not in self.suits.values():
+            self.majorSuit, self.majorSuit2=None,None
+        elif self.suits[suit]==3:
+            self.majorSuit=suit
+            self.majorSuit2=None
+        
+        # update for ranks
+        rank=self.rank2num[fifth[0]]
+        self.leftRanks[rank]-=1
+        if rank not in self.singles.keys():
+            if rank!=14:
+                self.strongSingles.add(rank) # only one pair
+            else: self.singles.add(rank)
+        else: # at least 3 of a kind
+            self.singles.remove(rank)
+            self.strongSingles.add(rank)
+        # if self.ranks[rank]==2:
+        #    rise.add(rank)
+        
+        # we will not care for the XXXYY case in the common card. (X>Y)
+        # In this case, Y is not strong
+        # It is really rare, like 1.08 occurrences in 500 games
+        
+        # take care of straights
+        bigStraight=self.findStraight()[1]
+        # for rank in bigStraight:
+        #     if rank not in strongSingles:
+        #         rise.add(rank)
+        self.strongSingles|=bigStraight
+        
+    def takeAction(self,action):
         '''
         Parameters:
         action : int, indicates the opponent's action.
         It is either a positive number (raise, the amount of)
         Or 0 (ckeck/call)
-        Or -1 for fold
+        Or -1 for our hand first
         '''
         pass
     
