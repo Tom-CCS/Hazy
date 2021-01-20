@@ -55,7 +55,7 @@ def getBucket(raw_prob, street, oppo_action):
     '''
     if raw_prob < 0.3:
         prob_label = 'S'
-    elif raw_prob < 0.8:
+    elif raw_prob < 0.6:
         prob_label = 'M'
     else:
         prob_label = 'L'
@@ -169,18 +169,6 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     if not forced_break:
         for action in action_prob:
             regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
-        # Update strategy
-        strategy = {}
-        normalizing_sum = 0
-        for action in action_prob:
-            strategy[action] = max(regrets[player][bucket][action], 0)
-            normalizing_sum += strategy[action]
-        for action in action_prob:
-            if normalizing_sum > 0:
-                strategy[action] /= normalizing_sum
-            else:
-                strategy[action] = 1 / len(action_prob)
-        actions[player][bucket] = strategy
     return node_util
 
 def deal_str(deck, sz):
@@ -229,6 +217,25 @@ def run_CFR():
             winner = -1
         # Run Magic
         util = CFR(deck, [1, 2], 0, "", 0, 1, 1, raw_p, winner)
+        # Update Strategy
+        for player in [0,1]:
+            for prob_type in PROB_BUCKET:
+                for oppo_act in OPPO_BUCKET:
+                    bucket = prob_type + oppo_act
+                    viable_actions = list(actions[player][bucket].keys())
+                    strategy = {}
+                    # Compute normalizing sum
+                    normalizing_sum = 0
+                    for action in viable_actions:
+                        strategy[action] = max(regrets[player][bucket][action], 0)
+                        normalizing_sum += strategy[action]
+                    # Compute the new strategy according to pg 11 of cfr.pdf
+                    for action in viable_actions:
+                        if normalizing_sum > 0:
+                            strategy[action] /= normalizing_sum
+                        else:
+                            strategy[action] = 1 / len(viable_actions)
+                    actions[player][bucket] = strategy
         print("WINNER:", winner)
         print("UTIL:", util)
         print("NUMBER OF CALLS:",CFR_calls)
