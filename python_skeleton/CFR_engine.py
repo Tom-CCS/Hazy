@@ -28,6 +28,8 @@ actions = {0:{}, 1:{}}
 # we will update this set
 # Denoted R_i(I, a)
 regrets = {0:{}, 1:{}}
+#Phase of the game. Not used
+STREET_BUCKET = ["0", "3", "4", "5"]
 #Raw Probability of winning: 0 - 0.5(S), 0.5 - 0.65(M), 0.65 - 1(L)
 PROB_BUCKET = ["S", "M", "L"]
 #Opponent Action Types: Check/Call(C), Small Raise(S), Large Raise(L), Double Raise(D)
@@ -36,7 +38,7 @@ OPPO_BUCKET = ["C", "S", "L", "D"]
 ACTIONS = ["F", "C", "S", "L"]
 ALL_IN_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 100
+ITER = 1000
 
 def getBucket(raw_prob, street, oppo_action):
     '''
@@ -51,9 +53,9 @@ def getBucket(raw_prob, street, oppo_action):
     Returns:
         A label for the bucket this situation corresponds to
     '''
-    if raw_prob < 0.5:
+    if raw_prob < 0.3:
         prob_label = 'S'
-    elif raw_prob < 0.65:
+    elif raw_prob < 0.8:
         prob_label = 'M'
     else:
         prob_label = 'L'
@@ -149,12 +151,13 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             new_pots[oppo] = pots[oppo]
             pot_sum = 2 * new_pots[oppo]
             if action == "S":
-                # raise to 0.66 the amount of stuff
-                new_pots[player] = min(new_pots[oppo] + int(0.66 * pot_sum), STACK)
+                # raise to 0.5 the amount of stuff
+                new_pots[player] = min(new_pots[oppo] + int(0.5 * pot_sum), STACK)
             else:
                 # all in
                 new_pots[player] = STACK
-            util[action] = CFR(deck, new_pots, street, street_history + action, 0, next_prob[0], next_prob[1], raw_p, winner)
+            # Betting goes to the opponent
+            util[action] = CFR(deck, new_pots, street, street_history + action, oppo, next_prob[0], next_prob[1], raw_p, winner)
     # We have computed the util of each action
     # Compute expected util
     for action in action_prob:
@@ -207,9 +210,6 @@ def run_CFR():
                         regrets[player][bucket][action] = 0
     # iterations of CFR
     for iter in range(ITER):
-        print(iter)
-        print(actions)
-        print(regrets)
         # shuffle the deck
         deck = eval7.Deck()
         deck.shuffle()
@@ -220,7 +220,7 @@ def run_CFR():
         for player in [0,1]:
             for street in [0,3,4,5]:
                 raw_p[player][street] = calc_prob(hands[player], street_cards[:street])
-        result = win_or_lose(hands[0], street_cards, hands[1])
+        result = win_or_lose([eval7.Card(hands[0][0]), eval7.Card(hands[0][1])], street_cards, [eval7.Card(hands[1][0]), eval7.Card(hands[1][1])])
         if result == 2:
             winner = 0
         elif result == 0:
@@ -229,8 +229,13 @@ def run_CFR():
             winner = -1
         # Run Magic
         util = CFR(deck, [1, 2], 0, "", 0, 1, 1, raw_p, winner)
-        print(util)
-        print(CFR_calls)
+        print("WINNER:", winner)
+        print("UTIL:", util)
+        print("NUMBER OF CALLS:",CFR_calls)
+        print(actions)
+        print(regrets)
+        print(iter)
+        print(hands, street_cards)
 
 run_CFR()
 
