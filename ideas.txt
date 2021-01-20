@@ -97,7 +97,7 @@ The street cards can be really close to some big hands (eg. straight, flush, ful
 
 e.g. When the enemy is timid, we could use intimidate more often.
 
-e.g. Try to guess the number of the bid in stage 0,3,4,5 by calculating the varience and the mean of the bid.
+e.g. Try to guess the number of the bid in stage 0,3,4,5 by calculating the variance and the mean of the bid.
 
 e.g. Try to figure out the pattern of them: like analysis the step bids.
 
@@ -111,3 +111,13 @@ like: INTIMIDATING, CONSERVATIVE, MORE_AGGRESSIVE
 Intimidating: if they bid small, we can try
 
 5. CFR(counterfactual regret minimization)
+
+-------------------------------------
+
+Intimidation:
+
+Good card? 
+
+If opponent is timid, scare them.
+
+
