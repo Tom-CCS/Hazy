@@ -2,16 +2,8 @@
 Simple example pokerbot, written in Python.
 '''
 from copy import copy
-from skeleton.actions import FoldAction, CallAction, CheckAction, RaiseAction, AssignAction
-from skeleton.states import GameState, TerminalState, RoundState, BoardState
-from skeleton.states import NUM_ROUNDS, STARTING_STACK, BIG_BLIND, SMALL_BLIND, NUM_BOARDS
-from skeleton.bot import Bot
-from skeleton.runner import parse_args, run_bot
 
 from probability import raw_prob, calc_prob, win_or_lose
-from algo_for_next_step import algorithm
-from allocate import allocate
-from behaviour_study import is_all_in
 
 import eval7
 import random
@@ -71,9 +63,7 @@ def getBucket(raw_prob, street, oppo_action):
 STACK = 200
 CFR_calls = 0
 def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
-    global CFR_calls
-    CFR_calls += 1
-    """
+    '''
     A single node of the recursive CFR algorithm
     Params:
         History(h):
@@ -91,7 +81,9 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             winner: the winner of the game overall. Precomputed. 
     Returns:
         The expected util
-    """
+    '''
+    global CFR_calls
+    CFR_calls += 1
     player = button
     oppo = 1 - button
     #return payoff for terminal state
