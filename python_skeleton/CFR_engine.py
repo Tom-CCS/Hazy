@@ -28,17 +28,20 @@ actions = {0:{}, 1:{}}
 # we will update this set
 # Denoted R_i(I, a)
 regrets = {0:{}, 1:{}}
-#Phase of the game. Not used
-STREET_BUCKET = ["0", "3", "4", "5"]
-#Raw Probability of winning: 0 - 0.5(S), 0.5 - 0.65(M), 0.65 - 1(L)
-PROB_BUCKET = ["S", "M", "L"]
+# average strategy profile
+# Denoted S_i(I, a)
+strategy_sum = {0:{}, 1:{}}
+#Phase of the game. "0" denotes pre-flop while "3" denotes post-flop
+STREET_BUCKET = ["0", "3"]
+#Raw Probability of winning: 0 - 0.35(S), 0.35 - 0.5(M1), 0.5 - 0.65(M2), 0.65 - 1(L)
+PROB_BUCKET = ["S", "M1", "M2", "L"]
 #Opponent Action Types: Check/Call(C), Small Raise(S), Large Raise(L), Double Raise(D)
 OPPO_BUCKET = ["C", "S", "L", "D"]
 #Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
 ACTIONS = ["F", "C", "S", "L"]
 ALL_IN_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 1000
+ITER = 3000
 
 def getBucket(raw_prob, street, oppo_action):
     '''
@@ -53,14 +56,17 @@ def getBucket(raw_prob, street, oppo_action):
     Returns:
         A label for the bucket this situation corresponds to
     '''
-    if raw_prob < 0.3:
+    street_label = "0" if street == 0 else "3"
+    if raw_prob < 0.35:
         prob_label = 'S'
-    elif raw_prob < 0.6:
-        prob_label = 'M'
+    elif raw_prob < 0.5:
+        prob_label = 'M1'
+    elif raw_prob < 0.65:
+        prob_label = 'M2'
     else:
         prob_label = 'L'
 
-    return prob_label + oppo_action
+    return street_label + prob_label + oppo_action
 
 STACK = 200
 CFR_calls = 0
@@ -166,36 +172,52 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     # Update culmultative regret
     # i haven't thought about how to update in the special case of consecutive raises
     # so i just don't update for now...
+    # Line 25 of pseudocode
     if not forced_break:
         for action in action_prob:
             regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
+        # Update average strategy
+        # Line 26 of pseudocode
+        player_prob = p1 if player == 0 else p2
+        for action in action_prob:
+            strategy_sum[player][bucket][action] += player_prob * action_prob[action] 
     return node_util
 
 def deal_str(deck, sz):
     A = deck.deal(sz)
     B = [str(card) for card in A]
     return B
-# Run the CFR algorithm
-def run_CFR():
+
+# Initialize the various arrays used to store strategy
+def initialize():
     #initialize strategy array
     for player in [0,1]:
         actions[player] = {}
         regrets[player] = {}
-        for prob_type in PROB_BUCKET:
-            for oppo_act in OPPO_BUCKET:
-                bucket = prob_type + oppo_act
-                actions[player][bucket] = {}
-                regrets[player][bucket] = {}
-                if oppo_act != 'L':
-                    # is not a all in; all actions allowed
-                    for action in ACTIONS:
-                        actions[player][bucket][action] = 1 / len(ACTIONS)
-                        regrets[player][bucket][action] = 0
-                else:
-                    # is all in; only check and fold
-                    for action in ALL_IN_ACTIONS:
-                        actions[player][bucket][action] = 1 / len(ALL_IN_ACTIONS)
-                        regrets[player][bucket][action] = 0
+        for street_type in STREET_BUCKET:
+            for prob_type in PROB_BUCKET:
+                for oppo_act in OPPO_BUCKET:
+                    bucket = street_type + prob_type + oppo_act
+                    actions[player][bucket] = {}
+                    regrets[player][bucket] = {}
+                    strategy_sum[player][bucket] = {}
+                    if oppo_act != 'L':
+                        # is not a all in; all actions allowed
+                        for action in ACTIONS:
+                            actions[player][bucket][action] = 1 / len(ACTIONS)
+                            regrets[player][bucket][action] = 0
+                            strategy_sum[player][bucket][action] = 0
+                    else:
+                        # is all in; only check and fold
+                        for action in ALL_IN_ACTIONS:
+                            actions[player][bucket][action] = 1 / len(ALL_IN_ACTIONS)
+                            regrets[player][bucket][action] = 0
+                            strategy_sum[player][bucket][action] = 0
+# Run the CFR algorithm
+def run_CFR(FILE):
+    #output file
+    f = open(FILE, "w")
+    initialize()
     # iterations of CFR
     for iter in range(ITER):
         # shuffle the deck
@@ -219,23 +241,25 @@ def run_CFR():
         util = CFR(deck, [1, 2], 0, "", 0, 1, 1, raw_p, winner)
         # Update Strategy
         for player in [0,1]:
-            for prob_type in PROB_BUCKET:
-                for oppo_act in OPPO_BUCKET:
-                    bucket = prob_type + oppo_act
-                    viable_actions = list(actions[player][bucket].keys())
-                    strategy = {}
-                    # Compute normalizing sum
-                    normalizing_sum = 0
-                    for action in viable_actions:
-                        strategy[action] = max(regrets[player][bucket][action], 0)
-                        normalizing_sum += strategy[action]
-                    # Compute the new strategy according to pg 11 of cfr.pdf
-                    for action in viable_actions:
-                        if normalizing_sum > 0:
-                            strategy[action] /= normalizing_sum
-                        else:
-                            strategy[action] = 1 / len(viable_actions)
-                    actions[player][bucket] = strategy
+            for street_type in STREET_BUCKET:
+                for prob_type in PROB_BUCKET:
+                    for oppo_act in OPPO_BUCKET:
+                        bucket = street_type + prob_type + oppo_act
+                        viable_actions = list(actions[player][bucket].keys())
+                        strategy = {}
+                        # Compute normalizing sum
+                        normalizing_sum = 0
+                        for action in viable_actions:
+                            strategy[action] = max(regrets[player][bucket][action], 0)
+                            normalizing_sum += strategy[action]
+                        # Compute the new strategy according to pg 11 of cfr.pdf
+                        for action in viable_actions:
+                            if normalizing_sum > 0:
+                                strategy[action] /= normalizing_sum
+                            else:
+                                strategy[action] = 1 / len(viable_actions)
+                        actions[player][bucket] = strategy
+        # dumping some info
         print("WINNER:", winner)
         print("UTIL:", util)
         print("NUMBER OF CALLS:",CFR_calls)
@@ -243,8 +267,32 @@ def run_CFR():
         print(regrets)
         print(iter)
         print(hands, street_cards)
+        # compute average strategy every 500 iters
+        if iter % 500 == 0:
+            average_strategy = {0:{}, 1:{}}
+            for player in [0,1]:
+                for street_type in STREET_BUCKET:
+                    for prob_type in PROB_BUCKET:
+                        for oppo_act in OPPO_BUCKET:
+                            bucket = street_type + prob_type + oppo_act
+                            viable_actions = list(actions[player][bucket].keys())
+                            avg_strategy = {}
+                            # Compute normalizing sum
+                            normalizing_sum = 0
+                            for action in viable_actions:
+                                normalizing_sum += strategy_sum[player][bucket][action]
+                            # Compute the new strategy according to pg 11 of cfr.pdf
+                            for action in viable_actions:
+                                if normalizing_sum > 0:
+                                    avg_strategy[action] = strategy_sum[player][bucket][action] / normalizing_sum
+                                else:
+                                    avg_strategy[action]  = 1 / len(viable_actions)
+                            average_strategy[player][bucket] = avg_strategy
+            # write to file
+            f.write(str(average_strategy) + "/n")
+    f.close()
 
-run_CFR()
+run_CFR("output.txt")
 
 
                 
