@@ -33,7 +33,7 @@ OPPO_BUCKET = ["C", "S", "L", "D"]
 ACTIONS = ["F", "C", "S", "L"]
 ALL_IN_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 3000
+ITER = 10000
 
 def getBucket(raw_prob, street, oppo_action):
     '''
@@ -60,7 +60,8 @@ def getBucket(raw_prob, street, oppo_action):
 
     return street_label + prob_label + oppo_action
 
-STACK = 200
+INFLATION = 2 # 0.5 * the number of chips inflated at the beginning
+STACK = 200 # the number of chips each player has
 CFR_calls = 0
 def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     '''
@@ -92,8 +93,8 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
         node_util = {}
         if winner != -1:
             # someone won
-            node_util[winner] = pots[1 - winner]
-            node_util[1 - winner] = -pots[1 - winner]
+            node_util[winner] = pots[1 - winner] + INFLATION
+            node_util[1 - winner] = -pots[1 - winner] - INFLATION
         else:
             # draw
             node_util = [0, 0]
@@ -128,7 +129,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
         # simply cutoff the game after the fourth raise
         # folds
         if action == "F":
-            util["F"] = {player: -pots[player], oppo: pots[player]}
+            util["F"] = {player: -pots[player]-INFLATION, oppo: pots[player]+INFLATION}
         # checks / calls
         elif action == "C":
             new_pots = {}
