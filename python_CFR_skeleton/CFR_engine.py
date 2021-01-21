@@ -149,8 +149,8 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             new_pots[oppo] = pots[oppo]
             pot_sum = 2 * new_pots[oppo]
             if action == "S":
-                # raise to 0.5 the amount of stuff
-                new_pots[player] = min(new_pots[oppo] + int(0.5 * pot_sum), STACK)
+                # raise to 0.66 the amount of stuff
+                new_pots[player] = min(new_pots[oppo] + int(0.66 * pot_sum), STACK)
             else:
                 # all in
                 new_pots[player] = STACK
