@@ -5,6 +5,8 @@ from copy import copy
 
 from probability import raw_prob, calc_prob, win_or_lose
 
+from allocate import allocate
+
 import eval7
 import random
 import json
@@ -25,15 +27,15 @@ regrets = {0:{}, 1:{}}
 strategy_sum = {0:{}, 1:{}}
 #Phase of the game. "0" denotes pre-flop while "3" denotes post-flop
 STREET_BUCKET = ["0", "3"]
-#Raw Probability of winning: 0 - 0.35(S), 0.35 - 0.5(M1), 0.5 - 0.65(M2), 0.65 - 1(L)
-PROB_BUCKET = ["S", "M1", "M2", "L"]
+#Raw Probability of winning: 0 - 0.35(S), 0.35 - 0.5(M1), 0.5 - 0.65(M2), 0.65 - 0.8(L1), 0.8 - 1.0(L2)
+PROB_BUCKET = ["S", "M1", "M2", "L1", "L2"]
 #Opponent Action Types: Check/Call(C), Small Raise(S), Large Raise(L), Double Raise(D)
 OPPO_BUCKET = ["C", "S", "L", "D"]
 #Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
-ACTIONS = ["F", "C", "S", "L"]
-ALL_IN_ACTIONS = ["F", "C"]
+RAISE_ACTIONS = ["F", "C", "S", "L"]
+NO_RAISE_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 10000
+ITER = 5000
 
 def getBucket(raw_prob, street, oppo_action):
     '''
@@ -55,13 +57,16 @@ def getBucket(raw_prob, street, oppo_action):
         prob_label = 'M1'
     elif raw_prob < 0.65:
         prob_label = 'M2'
+    elif raw_prob < 0.8:
+        prob_label = 'L1'
     else:
-        prob_label = 'L'
+        prob_label = 'L2'
 
     return street_label + prob_label + oppo_action
 
-INFLATION = 2 # 0.5 * the number of chips inflated at the beginning
+INFLATION = 1 # 0.5 * the number of chips inflated at the beginning
 STACK = 200 # the number of chips each player has
+SMALL_RAISE_RAIO = 0.66 # The ratio of a small raise
 CFR_calls = 0
 def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     '''
@@ -93,8 +98,8 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
         node_util = {}
         if winner != -1:
             # someone won
-            node_util[winner] = pots[1 - winner] + INFLATION
-            node_util[1 - winner] = -pots[1 - winner] - INFLATION
+            node_util[winner] = pots[1 - winner]
+            node_util[1 - winner] = -pots[1 - winner]
         else:
             # draw
             node_util = [0, 0]
@@ -115,11 +120,6 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     action_prob = copy(actions[player][bucket]) # a map taking each action to its probability
     # we do not consider >= 4 bets, thus if this happens we merge the raises as checks
     forced_break = False
-    if len(street_history) == 3 and oppo_action == "D":
-        forced_break = True
-        action_prob["C"] = action_prob["C"] + action_prob["S"] + action_prob["L"]
-        del action_prob["S"]
-        del action_prob["L"]
     util = {} # the expected util array, mapping each action to the expected util
     node_util = {0:0, 1:0} # the expected util for both players at this point
     for action in action_prob:
@@ -129,7 +129,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
         # simply cutoff the game after the fourth raise
         # folds
         if action == "F":
-            util["F"] = {player: -pots[player]-INFLATION, oppo: pots[player]+INFLATION}
+            util["F"] = {player: -pots[player], oppo: pots[player]}
         # checks / calls
         elif action == "C":
             new_pots = {}
@@ -151,7 +151,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             pot_sum = 2 * new_pots[oppo]
             if action == "S":
                 # raise to 0.66 the amount of stuff
-                new_pots[player] = min(new_pots[oppo] + int(0.66 * pot_sum), STACK)
+                new_pots[player] = min(new_pots[oppo] + int(SMALL_RAISE_RAIO * pot_sum), STACK)
             else:
                 # all in
                 new_pots[player] = STACK
@@ -166,14 +166,13 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
     # i haven't thought about how to update in the special case of consecutive raises
     # so i just don't update for now...
     # Line 25 of pseudocode
-    if not forced_break:
-        for action in action_prob:
-            regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
-        # Update average strategy
-        # Line 26 of pseudocode
-        player_prob = p1 if player == 0 else p2
-        for action in action_prob:
-            strategy_sum[player][bucket][action] += player_prob * action_prob[action] 
+    for action in action_prob:
+        regrets[player][bucket][action] += next_prob[oppo] * (util[action][player] - node_util[player])
+    # Update average strategy
+    # Line 26 of pseudocode
+    player_prob = p1 if player == 0 else p2
+    for action in action_prob:
+        strategy_sum[player][bucket][action] += player_prob * action_prob[action] 
     return node_util
 
 def deal_str(deck, sz):
@@ -194,35 +193,48 @@ def initialize():
                     actions[player][bucket] = {}
                     regrets[player][bucket] = {}
                     strategy_sum[player][bucket] = {}
-                    if oppo_act != 'L':
-                        # is not a all in; all actions allowed
-                        for action in ACTIONS:
-                            actions[player][bucket][action] = 1 / len(ACTIONS)
-                            regrets[player][bucket][action] = 0
-                            strategy_sum[player][bucket][action] = 0
-                    else:
-                        # is all in; only check and fold
-                        for action in ALL_IN_ACTIONS:
-                            actions[player][bucket][action] = 1 / len(ALL_IN_ACTIONS)
-                            regrets[player][bucket][action] = 0
-                            strategy_sum[player][bucket][action] = 0
+                    # The set of allowed actions
+                    action_list = NO_RAISE_ACTIONS
+                    if oppo_act in ['C', 'S']:
+                        action_list = RAISE_ACTIONS
+                    for action in action_list:
+                        actions[player][bucket][action] = 1 / len(action_list)
+                        regrets[player][bucket][action] = 0
+                        strategy_sum[player][bucket][action] = 0
+# 
 # Run the CFR algorithm
-def run_CFR(FILE):
+# save breakpoints in FILE
+# Write the result to the file given by DEST
+def run_CFR(FILE, DEST):
     #output file
-    f = open(FILE, "w")
+    f = open(FILE + str(INFLATION) + ".txt", "w")
     initialize()
     # iterations of CFR
     for iter in range(ITER):
         # shuffle the deck
         deck = eval7.Deck()
         deck.shuffle()
-        hands = [deal_str(deck, 2), deal_str(deck, 2)]
+        # deal card
+        hands = [deal_str(deck, 6), deal_str(deck, 6)]
         street_cards = deck.deal(5)
         # precompute probability array
         raw_p = {0:{}, 1:{}}
+        # allocate
+        # since we might give up on certain boards
+        # we will have to continue in such circumstances
+        playing = True
         for player in [0,1]:
+            # use our allocation algorithm
+            allocation = allocate(hands[player])
+            print(allocation)
+            if allocation[1] < INFLATION - 1:
+                playing = False
+            hands[player] = allocation[0][INFLATION - 1]
             for street in [0,3,4,5]:
                 raw_p[player][street] = calc_prob(hands[player], street_cards[:street])
+        if not playing:
+            continue
+        # compute game result
         result = win_or_lose([eval7.Card(hands[0][0]), eval7.Card(hands[0][1])], street_cards, [eval7.Card(hands[1][0]), eval7.Card(hands[1][1])])
         if result == 2:
             winner = 0
@@ -231,7 +243,8 @@ def run_CFR(FILE):
         else:
             winner = -1
         # Run Magic
-        util = CFR(deck, [1, 2], 0, "", 0, 1, 1, raw_p, winner)
+        Blind = [1 + INFLATION, 2 + INFLATION]
+        util = CFR(deck, Blind, 0, "", 0, 1, 1, raw_p, winner)
         # Update Strategy
         for player in [0,1]:
             for street_type in STREET_BUCKET:
@@ -253,12 +266,13 @@ def run_CFR(FILE):
                                 strategy[action] = 1 / len(viable_actions)
                         actions[player][bucket] = strategy
         # dumping some info
-        print("WINNER:", winner)
-        print("UTIL:", util)
-        print("NUMBER OF CALLS:",CFR_calls)
         print(actions)
         print(regrets)
         print(iter)
+        print("WINNER:", winner)
+        print("UTIL:", util)
+        print("NUMBER OF CALLS:",CFR_calls)
+
         print(hands, street_cards)
         # compute average strategy every 500 iters
         if iter % 500 == 0:
@@ -274,6 +288,12 @@ def run_CFR(FILE):
                             normalizing_sum = 0
                             for action in viable_actions:
                                 normalizing_sum += strategy_sum[player][bucket][action]
+                            # We disable any action unless it has a > 0.1 prob of triggering. 
+                            # I hope this would be helpful for all-ins
+                            for action in viable_actions:
+                                if strategy_sum[player][bucket][action] < 0.1 * normalizing_sum:
+                                    normalizing_sum -= strategy_sum[player][bucket][action]
+                                    strategy_sum[player][bucket][action] = 0
                             # Compute the new strategy according to pg 11 of cfr.pdf
                             for action in viable_actions:
                                 if normalizing_sum > 0:
@@ -283,10 +303,17 @@ def run_CFR(FILE):
                             average_strategy[player][bucket] = avg_strategy
             # write to file
             f.write(str(average_strategy) + "\n\n")
+        # if training is finished, write to destination
+        if iter == ITER - 1:   
+            DEST.write(str(average_strategy) + "\n")
     f.close()
 
 if __name__ == '__main__':
-    run_CFR("output.txt")
+    g = open("CFR_dict.txt", "w")
+    # run CFR for all 3 tables
+    for INFLATION in range(1, 4):
+        run_CFR("output", g)
+    g.close()
 
 
                 

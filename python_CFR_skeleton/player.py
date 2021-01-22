@@ -24,10 +24,13 @@ with open(filename_PROB,'r') as load_f:
     PROBABILITIES = json.load(load_f)
 
 #The CFR Dictionary
-CFR_dict = {}
-filename_CFR = "CFR_dict.json"
+#A list of three dicts
+# indicating strategy at each board
+CFR_dict = [{}, {}, {}]
+filename_CFR = "CFR_dict.txt"
 with open(filename_CFR,'r') as load_c:
-    CFR_dict = eval(load_c.readline())
+    for board in range(3):
+        CFR_dict[board] = eval(load_c.readline())
 
 
 class Player(Bot):
@@ -50,6 +53,7 @@ class Player(Bot):
 
         self.round_count = 0 # count the number of rounds elapsed
         self.player = 0 # 0 if we are playing as SB, 1 if we are playing as BB
+        self.raise_count = [0,0,0] # The number of consecutive raises at a table
 
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
@@ -90,9 +94,14 @@ class Player(Bot):
         
         self.allocate_cards(my_cards) #our old allocation strategy
 
+        if my_bankroll - opp_bankroll > 12 * (500 - round_num) + 50:
+            self.playing = [0,0,0]
+
         self.round_count += 1 
 
         self.player = 1 if big_blind else 0
+
+        self.raise_count = [0,0,0]
 
     def handle_round_over(self, game_state, terminal_state, active):
         '''
@@ -184,27 +193,43 @@ class Player(Bot):
                         if card!='':
                             seen_cards.append(eval7.Card(card))
 
-                    # Determine action based on CFR
-                    oppo_action = "C" if board_cont_cost == 0 else ("R" + str(board_cont_cost))
+                    # Determine action based on CFR bucketing
+                    if board_cont_cost > 0:
+                        self.raise_count[i] += 1
+                    else:
+                        self.raise_count[i] = 0
+                    oppo_action = ""
+                    if board_cont_cost == 0:
+                        oppo_action = "C"
+                    elif self.raise_count[i] >= 2:
+                        oppo_action = "D"
+                    else:
+                        oppo_action = "R" + str(board_cont_cost)
+                    # Compute raw winning probability
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
+                    # CFR dictionary lookup
                     raise_amount = determine_action(self.player, street, oppo_action, win_prob,  
                                         pot_total, my_pips[i], board_cont_cost, 
-                                        (min_raise, min(max_raise, total_raise_reserve)), CFR_dict)
+                                        (min_raise, min(max_raise, total_raise_reserve)), CFR_dict[i])
                    
                     if RaiseAction in legal_actions[i] and raise_amount > 0: #raise if we want and if we can afford it
+                        self.raise_count[i] += 1
                         my_actions[i] = RaiseAction(raise_amount)
                         commit_cost = board_cont_cost+raise_amount
                         total_raise_reserve -= raise_amount
                     
                     elif CallAction in legal_actions[i] and raise_amount >=0: 
+                        self.raise_count[i] = 0
                         my_actions[i] = CallAction()
                         commit_cost = board_cont_cost #the cost to call is board_cont_cost
                     
                     elif CheckAction in legal_actions[i] and raise_amount >=0: #checking is our only valid move here
+                        self.raise_count[i] = 0
                         my_actions[i] = CheckAction()
                         commit_cost = 0
                     
                     else:
+                        self.raise_count[i] = 0
                         my_actions[i] = FoldAction()
                         commit_cost = 0
                         # if decide to fold, then the raise reserve could be increased
