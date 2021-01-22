@@ -5,7 +5,7 @@ Created on Sun Jan 10 14:06:03 2021
 @author: 1
 """
 import numpy as np
-
+import random
 class Guessing:
     def __init__(self,three,ours):
         '''
@@ -31,11 +31,11 @@ class Guessing:
         
         # A card can be in one or two sets of single or potentialSiggles,
         # But never be in strongSingles and another singles
-        self.majorSuit = None
+        self.majorSuit = ""
         # It is defined as the most likely suit (str) to have a flush.
         # 3, 4: suit of two
         # 5: suit of three of the same suit
-        self.majorSuit2=None
+        self.majorSuit2=""
         # If there are four cards on, ans the suits are 2+2
         self.doubles = set()
         # The pairs of cards that can potentially make a good hand.
@@ -65,7 +65,7 @@ class Guessing:
         self.initialGuess()
         self.restCards={i+j for i in "23456789TJQKA" for j in "cdhs"}
         # A set of rest cards in order to give prob easier
-        for card in three|ours:
+        for card in three+ours:
             self.restCards.remove(card)
         
     def initialGuess(self):
@@ -168,9 +168,7 @@ class Guessing:
         self.restCards.remove(fourth)
         self.common.add(fourth)
         self.state+=1
-        for card in self.ours:
-            self.leftRanks[self.rank2num[fourth[0]]]-=1
-            self.leftSuits[fourth[1]]-=1
+        self.leftSuits[fourth[1]]-=1
         # rising=set()
         
         # update for suits
@@ -188,7 +186,7 @@ class Guessing:
         # update for ranks
         rank=self.rank2num[fourth[0]]
         self.leftRanks[rank]-=1
-        if rank not in self.singles.keys():
+        if rank not in self.ranks.keys():
             if rank!=14:
                 self.strongSingles.add(rank) # only one pair
             else: self.singles.add(rank)
@@ -266,18 +264,18 @@ class Guessing:
         # Our first hand, we do nothing
         if action==0:
             for i in self.singles:
-                self.guessing[i]*=(self.states/2)
+                self.guessing[i]*=(self.state/2)
             for i in self.potentialSingles:
-                self.guessing[i]*=(self.states/2)
+                self.guessing[i]*=(self.state/2)
             for i in self.strongSingles:
-                self.guessing[i]*=(self.states/2)
+                self.guessing[i]*=(self.state/2)
         elif action>0:
             for i in self.singles:
-                self.guessing[i]*=(self.states/2)
+                self.guessing[i]*=(self.state/2)
             for i in self.potentialSingles:
-                self.guessing[i]*=(self.states/2)
+                self.guessing[i]*=(self.state/2)
             for i in self.strongSingles:
-                self.guessing[i]*=self.states
+                self.guessing[i]*=self.state
     
     def outputGuessing(self,pairs):
         '''
@@ -290,17 +288,27 @@ class Guessing:
         prob=[]
         for card in self.restCards:
             try:
-                cards.append(card)
                 prob.append(self.guessing[self.rank2num[card[0]]]/self.leftRanks[self.rank2num[card[0]]])
+                cards.append(card)
             except:
                 pass
         cards=np.array(cards)
         s=sum(prob)
         prob=np.array(prob)/s
-        for i in range (pairs):
-            while True:
-                choice=np.random.choice(cards,2,replace=True,p=prob)
-                if choice[0]!=choice[1]:
-                    output.append(list(choice))
-                    break
-        
+        if self.state<5:
+            for i in range (pairs):
+                while True:
+                    choice=np.random.choice(cards,2,replace=True,p=prob)
+                    if choice[0]!=choice[1]:
+                        common=random.sample(self.restCards-set(choice),5-self.state)
+                        output.append([list(choice),common])
+                        break
+            return output
+        else:
+            for i in range (pairs):
+                while True:
+                    choice=np.random.choice(cards,2,replace=True,p=prob)
+                    if choice[0]!=choice[1]:
+                        output.append(list(choice))
+                        break
+            return output

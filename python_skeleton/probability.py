@@ -96,10 +96,28 @@ def calcBiasedProb(guess):
     '''
     common=guess.common
     ours=guess.ours
+    ourCard=[eval7.Card(card) for card in ours]
     pairs=100
-    guessing=guess.outputGuessing(pairs)
-    
-    pass
+    guessingSets=guess.outputGuessing(pairs)
+    score=0
+    if guess.state<5:
+        for cardSet in guessingSets:
+            commonCard=[eval7.Card(card) for card in common+cardSet[1]]
+            opponentCard=[eval7.Card(card) for card in cardSet[0]]
+            ourScore=eval7.evaluate(ourCard+commonCard)
+            oppScore=eval7.evaluate(opponentCard+commonCard)
+            score+=int(ourScore>oppScore)+int(ourScore>=oppScore)
+        return score/(pairs*2)
+    else:
+        commonCard=[eval7.Card(card) for card in common]
+        ourScore=eval7.evaluate(ourCard+commonCard)
+        for cardSet in guessingSets:
+            opponentCard=[eval7.Card(card) for card in cardSet]
+            oppScore=eval7.evaluate(opponentCard+commonCard)
+            score+=int(ourScore>oppScore)+int(ourScore>=oppScore)
+        return score/(pairs*2)
+            
+        
 
 def win_or_lose(our_hand, current_common, opponent_hand=[], rest=None):
     '''
