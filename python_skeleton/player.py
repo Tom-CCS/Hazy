@@ -7,10 +7,11 @@ from skeleton.states import NUM_ROUNDS, STARTING_STACK, BIG_BLIND, SMALL_BLIND, 
 from skeleton.bot import Bot
 from skeleton.runner import parse_args, run_bot
 
-from probability import raw_prob, calc_prob
+from probability import raw_prob, calc_prob, calcBiasedProb, raw_prob
 from algo_for_next_step import algorithm
 from allocate import allocate
 from behaviour_study import is_all_in
+from guessing import Guessing
 
 import eval7
 import random
@@ -54,6 +55,12 @@ class Player(Bot):
         self.round_count = 0 # count the number of rounds elapsed
         self.algo_index = -1
         self.algo = []
+        
+        self.guessings=[None,None,None]
+        # The guessings for these three boards.
+        
+        self.last_turn_state=[0,0,0]
+        # the jth position is i if it is the last turn is state i on jth board.
 
         #different possibility of taking each algorithm
         self.algorithms_prob = [0.3, 0.3, 0.4]
@@ -143,6 +150,8 @@ class Player(Bot):
             opp_cards = previous_board_state.hands[1-active]  # opponent's cards or [] if not revealed
         
         self.board_allocations = [[], [], []] #reset our variables at the end of every round!
+        self.guessings=[None]*3
+        self.last_turn_state=[0,0,0]
 
         game_clock = game_state.game_clock #check how much time we have remaining at the end of a game
         round_num = game_state.round_num #Monte Carlo takes a lot of time, we use this to adjust!
@@ -195,8 +204,8 @@ class Player(Bot):
         opp_stack = round_state.stacks[1-active]  # the number of chips your opponent has remaining
         stacks = [my_stack, opp_stack]
         net_upper_raise_bound = round_state.raise_bounds()[1] # max raise across 3 boards
-        net_cost = 0 # keep track of the net additional amount you are spending across boards this round
         my_actions = [None] * NUM_BOARDS
+        net_cost = 0 # keep track of the net additional amount you are spending across boards this round
         total_cont_cost = sum(continue_cost) # the minimum number of chips to keep playing at all the tables
         total_raise_reserve = my_stack - total_cont_cost
         for i in range(NUM_BOARDS):
@@ -228,15 +237,48 @@ class Player(Bot):
                     pot_total = my_pips[i] + opp_pips[i] + board_total #total money in the pot right now
                     min_raise, max_raise = round_state.board_states[i].raise_bounds(active, round_state.stacks)
                     
-                    #print(min_raise,max_raise,board_cont_cost)
+                    ###########################
+                    #                         #
+                    #  My added code is here  #
+                    #                         # 
+                    ###########################
+                    '''
+                    #print(min_raise,max_raiseboard_cont_cost)
                     #print("board_cards : ",board_cards)
                     seen_cards=[]
                     for card in board_cards[i]:
                         if card!='':
-                            seen_cards.append(eval7.Card(card))
+                            seen_cards.append(eval7.Card(caard))
                     #print(self.board_allocations[i])
                     #print(seen_cards)
                     win_prob=calc_prob(self.board_allocations[i],seen_cards)
+                    '''
+                    if street == 0:
+                        # Only raw probs are Okay
+                        win_prob = raw_prob(self.board_allocations[i][0],self.board_allocations[i][1])
+                    else:
+                        if self.last_turn_state[i] != street:
+                            if street==3:
+                                self.guessings[i] = Guessing(board_cards[i][:3],self.board_allocations[i])
+                            elif street==4:
+                                self.guessings[i].update3To4(board_cards[i][3])
+                            else:
+                                self.guessings[i].update4To5(board_cards[i][4])
+                        if self.last_turn_state[i] != street or board_cont_cost > 0:
+                            # We are encountering a raise
+                            # Or a check of others
+                            # This is all the cases when we are not 1st hand
+                            # And we should update
+                            self.guessings[i].takeAction(board_cont_cost)
+                        self.last_turn_state[i] =  street
+                        win_prob = calcBiasedProb(self.guessings[i])
+                    
+                    
+                    ###########################
+                    #                         #
+                    # My added code ends here #
+                    #                         # 
+                    ###########################
                     #adjust algorithm if the opponent is all-in
                     if is_all_in(self.large_raise_count, self.round_count):
                         #TODO: Optimize this
