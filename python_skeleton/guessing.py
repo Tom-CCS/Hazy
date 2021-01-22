@@ -187,10 +187,12 @@ class Guessing:
         rank=self.rank2num[fourth[0]]
         self.leftRanks[rank]-=1
         if rank not in self.ranks.keys():
-            if rank!=14:
+            self.ranks[rank]=1
+            if rank==14:
                 self.strongSingles.add(rank) # only one pair
             else: self.singles.add(rank)
         else: # at least 3 of a kind
+            self.ranks[rank]+=1
             self.singles.remove(rank)
             self.strongSingles.add(rank)
         # if self.ranks[rank]==2:
@@ -232,11 +234,13 @@ class Guessing:
         # update for ranks
         rank=self.rank2num[fifth[0]]
         self.leftRanks[rank]-=1
-        if rank not in self.singles.keys():
-            if rank!=14:
+        if rank not in self.ranks.keys():
+            self.ranks[rank]=1
+            if rank==14:
                 self.strongSingles.add(rank) # only one pair
             else: self.singles.add(rank)
         else: # at least 3 of a kind
+            self.ranks[rank]+=1
             self.singles.remove(rank)
             self.strongSingles.add(rank)
         # if self.ranks[rank]==2:
@@ -300,7 +304,7 @@ class Guessing:
                 while True:
                     choice=np.random.choice(cards,2,replace=True,p=prob)
                     if choice[0]!=choice[1]:
-                        common=random.sample(self.restCards-set(choice),5-self.state)
+                        common=set(random.sample(self.restCards-set(choice),5-self.state))
                         output.append([list(choice),common])
                         break
             return output

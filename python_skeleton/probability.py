@@ -102,7 +102,7 @@ def calcBiasedProb(guess):
     score=0
     if guess.state<5:
         for cardSet in guessingSets:
-            commonCard=[eval7.Card(card) for card in common+cardSet[1]]
+            commonCard=[eval7.Card(card) for card in common|cardSet[1]]
             opponentCard=[eval7.Card(card) for card in cardSet[0]]
             ourScore=eval7.evaluate(ourCard+commonCard)
             oppScore=eval7.evaluate(opponentCard+commonCard)
