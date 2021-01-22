@@ -39,95 +39,98 @@ with open(filename, "r") as f:
         pips = {'A':[0,0,0], 'B':[0,0,0]}
         line = f.readline()
         while len(line) > 1:
-            #regex match the line
-            words = line.split(" ")
-            #deal with revealing cards
-            if words[0] in ["Flop", "Turn", "River"]:
-                preflop = False
-                result = re.match(REGEX_REVEAL, line)
-                cards, amount, board = result.group(2, 3, 6)
-                amount = int(amount)
-                # Clear the pips
-                pips['A'] = [0,0,0]
-                pips['B'] = [0,0,0]
-                # Assert we are computing the boards correctly
-                if (amount != board_pots[int(board) - 1]):
-                    print("Check failed!")
-                    print("Line No. ", line_cnt)
-                    print(amount, board_pots[int(board) - 1])
-                    assert False
-                streets[int(board) - 1] = cards.split(" ")
-                print(streets)
-            #deal with making bets
-            else:
-                #blind
-                if words[1] == "posts":
-                    result = re.match(REGEX_BLIND, line)
-                    player, amount = result.group(1,2)
+            try:
+                #regex match the line
+                words = line.split(" ")
+                #deal with revealing cards
+                if words[0] in ["Flop", "Turn", "River"]:
+                    preflop = False
+                    result = re.match(REGEX_REVEAL, line)
+                    cards, amount, board = result.group(2, 3, 6)
                     amount = int(amount)
-                    for board in range(3):
+                    # Clear the pips
+                    pips['A'] = [0,0,0]
+                    pips['B'] = [0,0,0]
+                    # Assert we are computing the boards correctly
+                    if (amount != board_pots[int(board) - 1]):
+                        print("Check failed!")
+                        print("Line No. ", line_cnt)
+                        print(amount, board_pots[int(board) - 1])
+                        assert False
+                    streets[int(board) - 1] = cards.split(" ")
+                    print(streets)
+                #deal with making bets
+                else:
+                    #blind
+                    if words[1] == "posts":
+                        result = re.match(REGEX_BLIND, line)
+                        player, amount = result.group(1,2)
+                        amount = int(amount)
+                        for board in range(3):
+                            pips[player][board] = amount
+                            board_pots[board] += amount
+                    #raises
+                    if words[1] == "raises":
+                        result = re.match(REGEX_RAISE, line)
+                        player, amount, board = result.group(1, 2, 3)
+                        board = int(board) - 1
+                        amount = int(amount)
+                        # First discount the cont_cost
+                        opponent = 'B' if player == 'A' else 'A'
+                        cont_cost = max(pips[opponent][board] - pips[player][board], 0)
+                        # The amount the player bets before the raise
+                        prev_amount = pips[player][board]
+                        raise_amount = amount - prev_amount
+                        number_of_raise[player] += 1
+                        total_of_raise[player] += raise_amount
+                        raise_ratios[player].append((raise_amount - cont_cost)/ (board_pots[board] + cont_cost))
+                        # update the pot
+                        pips[player][board] = amount
+                        board_pots[board] += raise_amount
+                    #folds
+                    elif words[1] == "folds":
+                        result = re.match(REGEX_FOLD, line)
+                        player, board = result.group(1, 2)
+                        board = int(board) - 1
+                        number_of_folds[player] += 1
+                        if preflop:
+                            preflop_folds[player] += 1
+                    #calls  
+                    elif words[1] == "calls":
+                        result = re.match(REGEX_CALL, line)
+                        player, board = result.group(1, 2)
+                        board = int(board) - 1
+                        opponent = 'B' if player == 'A' else 'A'
+                        # The amount the player bets before the call
+                        amount = pips[opponent][board]
+                        prev_amount = pips[player][board]
+                        call_amount = amount - prev_amount
+                        # update the pot
+                        pips[player][board] = amount
+                        board_pots[board] += call_amount
+                    #bets
+                    elif words[1] == "bets":
+                        result = re.match(REGEX_BET, line)
+                        player, amount, board = result.group(1, 2, 3)
+                        board = int(board) - 1
+                        amount = int(amount)
                         pips[player][board] = amount
                         board_pots[board] += amount
-                #raises
-                if words[1] == "raises":
-                    result = re.match(REGEX_RAISE, line)
-                    player, amount, board = result.group(1, 2, 3)
-                    board = int(board) - 1
-                    amount = int(amount)
-                    # First discount the cont_cost
-                    opponent = 'B' if player == 'A' else 'A'
-                    cont_cost = max(pips[opponent][board] - pips[player][board], 0)
-                    # The amount the player bets before the raise
-                    prev_amount = pips[player][board]
-                    raise_amount = amount - prev_amount
-                    number_of_raise[player] += 1
-                    total_of_raise[player] += raise_amount
-                    raise_ratios[player].append((raise_amount - cont_cost)/ (board_pots[board] + cont_cost))
-                    # update the pot
-                    pips[player][board] = amount
-                    board_pots[board] += raise_amount
-                #folds
-                elif words[1] == "folds":
-                    result = re.match(REGEX_FOLD, line)
-                    player, board = result.group(1, 2)
-                    board = int(board) - 1
-                    number_of_folds[player] += 1
-                    if preflop:
-                        preflop_folds[player] += 1
-                #calls  
-                elif words[1] == "calls":
-                    result = re.match(REGEX_CALL, line)
-                    player, board = result.group(1, 2)
-                    board = int(board) - 1
-                    opponent = 'B' if player == 'A' else 'A'
-                    # The amount the player bets before the call
-                    amount = pips[opponent][board]
-                    prev_amount = pips[player][board]
-                    call_amount = amount - prev_amount
-                    # update the pot
-                    pips[player][board] = amount
-                    board_pots[board] += call_amount
-                #bets
-                elif words[1] == "bets":
-                    result = re.match(REGEX_BET, line)
-                    player, amount, board = result.group(1, 2, 3)
-                    board = int(board) - 1
-                    amount = int(amount)
-                    pips[player][board] = amount
-                    board_pots[board] += amount
-                    number_of_raise[player] += 1
-                    total_of_raise[player] += amount
-                    # The amount the player bets before the raise
-                    bet_ratios[player].append(amount / board_pots[board])
+                        number_of_raise[player] += 1
+                        total_of_raise[player] += amount
+                        # The amount the player bets before the raise
+                        bet_ratios[player].append(amount / board_pots[board])
 
-                #endgame awards
-                elif words[1] == "awarded":
-                    result = re.match(REGEX_AWARD, line)
-                    player, award = result.group(1, 2)
-                    awards[player].append(int(award))
+                    #endgame awards
+                    elif words[1] == "awarded":
+                        result = re.match(REGEX_AWARD, line)
+                        player, award = result.group(1, 2)
+                        awards[player].append(int(award))
 
-                else:
-                    pass
+                    else:
+                        pass
+            except:
+                print("Bad Line At:", line)
             line_cnt += 1
             line = f.readline()
 #print general statistics
