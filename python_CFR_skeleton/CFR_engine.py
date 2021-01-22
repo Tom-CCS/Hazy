@@ -33,6 +33,8 @@ PROB_BUCKET = ["S", "M1", "M2", "L1", "L2"]
 OPPO_BUCKET = ["C", "S", "L", "D"]
 #Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
 RAISE_ACTIONS = ["F", "C", "S", "L"]
+#Disable pre-flop all ins
+PRE_FLOP_ACTIONS = ["F", "C", "S"]
 NO_RAISE_ACTIONS = ["F", "C"]
 #Number of iterations
 ITER = 5000
@@ -196,7 +198,10 @@ def initialize():
                     # The set of allowed actions
                     action_list = NO_RAISE_ACTIONS
                     if oppo_act in ['C', 'S']:
-                        action_list = RAISE_ACTIONS
+                        if street_type == "0":
+                            action_list = PRE_FLOP_ACTIONS
+                        else:
+                            action_list = RAISE_ACTIONS
                     for action in action_list:
                         actions[player][bucket][action] = 1 / len(action_list)
                         regrets[player][bucket][action] = 0
