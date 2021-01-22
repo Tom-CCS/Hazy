@@ -4,6 +4,7 @@ Created on Sun Jan 10 14:06:03 2021
 
 @author: 1
 """
+import numpy as np
 
 class Guessing:
     def __init__(self,three,ours):
@@ -62,6 +63,10 @@ class Guessing:
             self.guessing[num]=1
             num+=1
         self.initialGuess()
+        self.restCards={i+j for i in "23456789TJQKA" for j in "cdhs"}
+        # A set of rest cards in order to give prob easier
+        for card in three|ours:
+            self.restCards.remove(card)
         
     def initialGuess(self):
         # Initialize the informations
@@ -160,6 +165,8 @@ class Guessing:
         Update the fields in this class
         NOTE: if okay, report the change
         '''
+        self.restCards.remove(fourth)
+        self.common.add(fourth)
         self.state+=1
         for card in self.ours:
             self.leftRanks[self.rank2num[fourth[0]]]-=1
@@ -207,6 +214,8 @@ class Guessing:
         Update the fields in the class
         NOTE: if okay, report the change.
         '''
+        self.restCards.remove(fifth)
+        self.common.add(fifth)
         self.state+=1
         suit=fifth[1]
         # rise=set()
@@ -270,13 +279,28 @@ class Guessing:
             for i in self.strongSingles:
                 self.guessing[i]*=self.states
     
-    def outputGuessing(self):
+    def outputGuessing(self,pairs):
         '''
+        Parameters: pairs: the number of the pairs to be output.
         output some sort of the guessing for the bot
         output the probability for each card (rank)
         '''
-        normalizer=sum(self.guessing.values())
-        output={}
-        for i in self.guessing.keys():
-            output[i]=self.guessing[i]/normalizer
-        return output, self.majorSuit, self.majorSuit2
+        output=[]
+        cards=[]
+        prob=[]
+        for card in self.restCards:
+            try:
+                cards.append(card)
+                prob.append(self.guessing[self.rank2num[card[0]]]/self.leftRanks[self.rank2num[card[0]]])
+            except:
+                pass
+        cards=np.array(cards)
+        s=sum(prob)
+        prob=np.array(prob)/s
+        for i in range (pairs):
+            while True:
+                choice=np.random.choice(cards,2,replace=True,p=prob)
+                if choice[0]!=choice[1]:
+                    output.append(list(choice))
+                    break
+        
