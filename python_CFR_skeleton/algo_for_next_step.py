@@ -41,7 +41,8 @@ def determine_action(player, street, oppo_action, win_prob, current_pot, my_pot,
         # handle preflop all-in
         if street == 0:
             if raise_amount > 100:
-                if raw_prob > 0.63：
+                print("Seriously?")
+                if win_prob > 0.63:
                     return 0
                 else:
                     return -1

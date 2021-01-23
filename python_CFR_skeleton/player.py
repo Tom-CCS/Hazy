@@ -94,7 +94,7 @@ class Player(Bot):
         
         self.allocate_cards(my_cards) #our old allocation strategy
 
-        if my_bankroll - opp_bankroll > 12 * (500 - round_num) + 50:
+        if my_bankroll - opp_bankroll > 24 * (500 - round_num) + 50:
             self.playing = [0,0,0]
 
         self.round_count += 1 
