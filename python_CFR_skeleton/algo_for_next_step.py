@@ -38,6 +38,15 @@ def determine_action(player, street, oppo_action, win_prob, current_pot, my_pot,
             oppo_action = "S"
         else:
             oppo_action = "L"
+        # handle preflop all-in
+        if street == 0:
+            if oppo_action > 100:
+                if raw_prob > 0.63：
+                    return 0
+                else:
+                    return -1
+            elif oppo_action == "L":
+                oppo_action = "S"
     bucket = getBucket(win_prob, street, oppo_action)
     action_choices = CFR_dict[player][bucket]
     # choose an action based on the recommendation of the CFR
