@@ -97,7 +97,7 @@ def calcBiasedProb(guess):
     common=guess.common
     ours=guess.ours
     ourCard=[eval7.Card(card) for card in ours]
-    pairs=200
+    pairs=100
     guessingSets=guess.outputGuessing(pairs)
     score=0
     if guess.state<5:
