@@ -7,12 +7,13 @@ Created on Sun Jan 10 14:06:03 2021
 import numpy as np
 import random
 class Guessing:
-    def __init__(self,three,ours):
+    def __init__(self,three,ours,preflopRound):
         '''
         Initial three cards on the board
         Parameters: 
         three: a list of 3 strs, first three cards for guessing.
         ours: our cards, a list of 2 strs
+        preflopRound: int, indicates how many rounds happened during preflop.
         Update the class.
         '''
         self.singles=set()
@@ -56,11 +57,13 @@ class Guessing:
         self.rank2num={}
         self.guessing={}
         # self.rise=set()
+        self.suitPrivilage=0
+        # If there are many suit, and the person raised, we may give the suit more score
         num=2
         for i in "23456789TJQKA":
             self.rank2num[i]=num
             self.leftRanks[num]=4
-            self.guessing[num]=(num-10)*(num>10)+(num<=10)
+            self.guessing[num]=(preflopRound-1)*(num-10)*(num>10)+1
             num+=1
         self.restCards={i+j for i in "23456789TJQKA" for j in "cdhs"}
         # A set of rest cards in order to give prob easier
@@ -230,10 +233,10 @@ class Guessing:
             else:
                 self.suits[suit]+=1
             if 3 not in self.suits.values():
-                self.majorSuit, self.majorSuit2=None,None
+                self.majorSuit, self.majorSuit2="", ""
             elif self.suits[suit]==3:
                 self.majorSuit=suit
-                self.majorSuit2=None
+                self.majorSuit2=""
             
             # update for ranks
             rank=self.rank2num[fifth[0]]
@@ -261,29 +264,32 @@ class Guessing:
             #         rise.add(rank)
             self.strongSingles|=bigStraight
         
-    def takeAction(self,action):
+    def takeAction(self, continueCost, potTotal):
         '''
         Parameters:
-        action : int, indicates the opponent's action.
-        It is either a positive number (raise, the amount of)
-        Or 0 (ckeck/call)
-        Or -1 for our hand first
+        continueCost: an integer the cost for continue the game
+        potTotal: the total pot
+        Return: nothing
+        only update self.guesssing
         '''
         # Our first hand, we do nothing
-        if action==0:
+        if continueCost>0:
+            state = self.state
+            goodCardRatio = continueCost / (potTotal - continueCost)
+            TGCR = max(goodCardRatio, 1)# short for truncated good card ratio.
             for i in self.singles:
-                self.guessing[i]*=(self.state/2)
+                # It will have a lager prob to have a larger 
+                self.guessing[i]*=((1+(i/14))*(state/3))
             for i in self.potentialSingles:
-                self.guessing[i]*=(self.state/2)
+                self.guessing[i]*=(10-state)/5
             for i in self.strongSingles:
-                self.guessing[i]*=(self.state/2)
-        elif action>0:
-            for i in self.singles:
-                self.guessing[i]*=(self.state/2)
-            for i in self.potentialSingles:
-                self.guessing[i]*=(self.state/2)
-            for i in self.strongSingles:
-                self.guessing[i]*=self.state
+                self.guessing[i]*=(2+TGCR)*state/2
+            if self.majorSuit!="":
+                if self.suits[self.majorSuit]==3:
+                    self.suitPrivilage+=0.1
+                elif self.suits[self.majorSuit]==4:
+                    self.suitPrivilage+=0.25
+            
     
     def outputGuessing(self,pairs):
         '''
@@ -296,7 +302,10 @@ class Guessing:
         prob=[]
         for card in self.restCards:
             try:
-                prob.append(self.guessing[self.rank2num[card[0]]]/self.leftRanks[self.rank2num[card[0]]])
+                rank=self.rank2num[card[0]]
+                rank_prob=self.guessing[rank]/self.leftRanks[rank]
+                card_prob=rank_prob*(1+(card[1]==self.majorSuit)*(self.suitPrivilage))
+                prob.append(card_prob)
                 cards.append(card)
             except:
                 pass

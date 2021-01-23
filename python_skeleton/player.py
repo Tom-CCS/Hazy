@@ -66,6 +66,10 @@ class Player(Bot):
         self.algorithms_prob = [0.3, 0.3, 0.4]
         #the gain each algorithm achieved
         self.algorithms_gain = [0] * num_alg
+        # counting how many rounds we have before flop
+        # If the number is large, it is likely that the opponent has a good
+        # pre card.
+        self.preflop_round=[0,0,0]
 
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
@@ -161,7 +165,12 @@ class Player(Bot):
         #update the gains of an algorithm
         self.algorithms_gain[self.algo_index] += (my_delta - opp_delta)
         #update our inference on how to weight each algorithm after 150 rounds
-        if round_num == 150:
+        ##################
+        #                #
+        # I changed here #
+        #                #
+        ##################
+        if round_num % 50 == 0:
             #you can tune this parameter here
             for i in range(num_alg):
                 self.algorithms_prob[i] += self.algorithms_gain[i] * 0.0005
@@ -256,10 +265,11 @@ class Player(Bot):
                     if street == 0:
                         # Only raw probs are Okay
                         win_prob = raw_prob(self.board_allocations[i][0],self.board_allocations[i][1])
+                        self.preflop_round[i]+=1
                     else:
                         if self.last_turn_state[i] != street:
                             if street==3:
-                                self.guessings[i] = Guessing(board_cards[i][:3],self.board_allocations[i])
+                                self.guessings[i] = Guessing(board_cards[i][:3],self.board_allocations[i],self.preflop_round[i])
                             elif street==4:
                                 self.guessings[i].update3To4(board_cards[i][3])
                             else:
@@ -269,7 +279,7 @@ class Player(Bot):
                             # Or a check of others
                             # This is all the cases when we are not 1st hand
                             # And we should update
-                            self.guessings[i].takeAction(board_cont_cost)
+                            self.guessings[i].takeAction(board_cont_cost,pot_total)
                         self.last_turn_state[i] =  street
                         win_prob = calcBiasedProb(self.guessings[i])
                     
@@ -277,8 +287,15 @@ class Player(Bot):
                     ###########################
                     #                         #
                     # My added code ends here #
-                    #                         # 
+                    #                         #
                     ###########################
+                    
+                    ###########################
+                    #                         #
+                    #   I fixed some params   #
+                    #                         #
+                    ###########################
+                    
                     #adjust algorithm if the opponent is all-in
                     if is_all_in(self.large_raise_count, self.round_count):
                         #TODO: Optimize this

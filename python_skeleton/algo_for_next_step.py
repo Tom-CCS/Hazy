@@ -1,6 +1,6 @@
 import eval7
 import random
-def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=lambda x: 2**(-0.5 * x), RAISE_THRES=0.7, RAISE_RATIO=0.4):
+def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=lambda x: 2**(-0.15 * x), RAISE_THRES=0.5, RAISE_RATIO=0.4):
     '''
     Parameters:
         INTIMIDATE_PROB: a float in [0,1]. Set to 1.0.
@@ -56,7 +56,7 @@ def algorithm(INTIMIDATE_PROB=1.0, INTIMIDATE_DEC=lambda x: 2**(-0.5 * x), RAISE
             raise_amount = 0
         else:
             raise_amount = my_pot + continue_cost + RAISE_RATIO * (current_pot + continue_cost) * 0.4
-            if win_prob > 0.7:
+            if win_prob > 0.55:
                 raise_amount += RAISE_RATIO * (current_pot + continue_cost) * 0.75
             raise_amount = (int)(raise_amount)
         
