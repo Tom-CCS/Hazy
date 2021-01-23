@@ -37,7 +37,7 @@ RAISE_ACTIONS = ["F", "C", "S", "L"]
 PRE_FLOP_ACTIONS = ["F", "C", "S"]
 NO_RAISE_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 5000
+ITER = 20000
 
 def getBucket(raw_prob, street, oppo_action):
     '''
