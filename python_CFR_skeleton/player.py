@@ -134,7 +134,7 @@ class Player(Bot):
 
         game_clock = game_state.game_clock #check how much time we have remaining at the end of a game
         round_num = game_state.round_num #Monte Carlo takes a lot of time, we use this to adjust!
-        if round_num == NUM_ROUNDS:
+        if round_num % 50 == 0:
             print(game_clock)
 
     def update_history(self, street, oppo_action_bucket, board):
@@ -142,7 +142,6 @@ class Player(Bot):
         Update the self.history array to reflect the current street history
         """
         big_blind = bool(self.player)
-        print(street, self.prev_street)
         if street > self.prev_street:
             # a new street
             if not big_blind:
@@ -261,7 +260,6 @@ class Player(Bot):
 
         # update street, if we are not assigning
         if self.prev_street < street and not AssignAction in legal_actions[0]:
-            print(self.history)
             self.prev_street = street
         return my_actions
 

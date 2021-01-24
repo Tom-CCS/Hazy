@@ -46,6 +46,8 @@ def getBucket(raw_prob, street, history):
     Returns:
         A label for the bucket this situation corresponds to
     '''
+    if len(history) >= 2:
+        history = history[-2:]
     street_label = "0" if street == 0 else "3"
     if street == 0:
         prob_label = str(int(raw_prob / 0.07))
