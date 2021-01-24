@@ -188,8 +188,9 @@ def run_CFR(FILE, DEST):
     #output file
     f = open(FILE + str(INFLATION) + ".txt", "w")
     # iterations of CFR
-    iter = 0
-    while (iter < ITER):
+    iters = 0
+    while (iters < ITER):
+        print(iters)
         # shuffle the deck
         deck = eval7.Deck()
         deck.shuffle()
@@ -205,7 +206,7 @@ def run_CFR(FILE, DEST):
         for player in [0,1]:
             # use our allocation algorithm
             allocation = allocate(hands[player])
-            print(allocation)
+            # print(allocation)
             if allocation[1] < INFLATION - 1:
                 playing = False
             hands[player] = allocation[0][INFLATION - 1]
@@ -242,17 +243,18 @@ def run_CFR(FILE, DEST):
                         strategy[action] = 1 / len(viable_actions)
                 actions[player][bucket] = strategy
         # dumping some info
-        if iter % 10 == 0:
-            print(actions)
-            print(regrets)
-            print(iter)
-            print("WINNER:", winner)
-            print("UTIL:", util)
-            print("NUMBER OF CALLS:",CFR_calls)
+        if iters % 10 == 0:
+            #print(actions)
+            #print(regrets)
+            #print(iters)
+            #print("WINNER:", winner)
+            #print("UTIL:", util)
+            #print("NUMBER OF CALLS:",CFR_calls)
 
-            print(hands, street_cards)
+            #print(hands, street_cards)
+            pass
         # compute average strategy every 500 iters
-        if iter % 500 == 0:
+        if iters % 500 == 0:
             average_strategy = {0:{}, 1:{}}
             for player in [0,1]:
                 for bucket in actions[player]:
@@ -278,9 +280,9 @@ def run_CFR(FILE, DEST):
             # write to file
             f.write(str(average_strategy) + "\n\n")
         # if training is finished, write to destination
-        if iter == ITER - 1:   
+        if iters == ITER - 1:   
             DEST.write(str(average_strategy) + "\n")
-        iter += 1
+        iters += 1
     f.close()
 
 if __name__ == '__main__':
