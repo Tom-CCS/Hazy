@@ -8,7 +8,7 @@ from skeleton.bot import Bot
 from skeleton.runner import parse_args, run_bot
 
 from probability import raw_prob, calc_prob
-from algo_for_next_step import determine_action
+from algo_for_next_step import determine_action, classify_action
 from allocate import allocate
 from behaviour_study import is_all_in
 
@@ -54,6 +54,8 @@ class Player(Bot):
         self.round_count = 0 # count the number of rounds elapsed
         self.player = 0 # 0 if we are playing as SB, 1 if we are playing as BB
         self.raise_count = [0,0,0] # The number of consecutive raises at a table
+        self.prev_street = 0 # the street we were in last turn
+        self.history = [] # the street history at each board
 
         #self.opponent_possibility=[[],[],[]] # the guessed possibility of opponent
         pass
@@ -103,6 +105,10 @@ class Player(Bot):
 
         self.raise_count = [0,0,0]
 
+        self.history = ["","",""]
+
+        self.prev_street = -1 
+
     def handle_round_over(self, game_state, terminal_state, active):
         '''
         Called when a round ends. Called NUM_ROUNDS times.
@@ -131,6 +137,25 @@ class Player(Bot):
         if round_num == NUM_ROUNDS:
             print(game_clock)
 
+    def update_history(self, street, oppo_action_bucket, board):
+        """
+        Update the self.history array to reflect the current street history
+        """
+        big_blind = bool(self.player)
+        print(street, self.prev_street)
+        if street > self.prev_street:
+            # a new street
+            if not big_blind:
+                # in this case we go first
+                self.history[board] = ""
+            else:
+                self.history[board] = oppo_action_bucket
+        else:
+            # the same street
+            self.history[board] += oppo_action_bucket
+            # if round too long, forget previous actions
+            if len(self.history[board]) > 3:
+                self.history[board] = self.history[board][-3:]
 
 
     def get_actions(self, game_state, round_state, active):
@@ -162,8 +187,9 @@ class Player(Bot):
         my_actions = [None] * NUM_BOARDS
         total_cont_cost = sum(continue_cost) # the minimum number of chips to keep playing at all the tables
         total_raise_reserve = my_stack - total_cont_cost
+
+        # Decide own action
         for i in range(NUM_BOARDS):
-            # Decide own action
             if AssignAction in legal_actions[i]: # This indicates it is the allocating round
                 cards = self.board_allocations[i] #allocate our cards that we made earlier
                 my_actions[i] = AssignAction(cards) #add to our actions
@@ -181,34 +207,25 @@ class Player(Bot):
                     else:
                         my_actions[i]=CheckAction()
                 else:
+                    # We keep playing at this table
                     board_cont_cost = continue_cost[i] #we need to pay this to keep playing
                     board_total = round_state.board_states[i].pot #amount before we started betting
                     pot_total = my_pips[i] + opp_pips[i] + board_total #total money in the pot right now
                     min_raise, max_raise = round_state.board_states[i].raise_bounds(active, round_state.stacks)
+
+                    # classify the opponent's action and update history
+                    oppo_action = classify_action(board_cont_cost, pot_total)
+                    self.update_history(street, oppo_action, i)
                     
-                    #print(min_raise,max_raise,board_cont_cost)
-                    #print("board_cards : ",board_cards)
+                    # compute probability
                     seen_cards=[]
                     for card in board_cards[i]:
                         if card!='':
                             seen_cards.append(eval7.Card(card))
+                    win_prob=calc_prob(self.board_allocations[i], seen_cards)
 
-                    # Determine action based on CFR bucketing
-                    if board_cont_cost > 0:
-                        self.raise_count[i] += 1
-                    else:
-                        self.raise_count[i] = 0
-                    oppo_action = ""
-                    if board_cont_cost == 0:
-                        oppo_action = "C"
-                    elif self.raise_count[i] >= 2:
-                        oppo_action = "D"
-                    else:
-                        oppo_action = "R" + str(board_cont_cost)
-                    # Compute raw winning probability
-                    win_prob=calc_prob(self.board_allocations[i],seen_cards)
-                    # CFR dictionary lookup
-                    raise_amount = determine_action(self.player, street, oppo_action, win_prob,  
+                    # apply CFR
+                    raise_amount = determine_action(self.player, street, win_prob, self.history[i],
                                         pot_total, my_pips[i], board_cont_cost, 
                                         (min_raise, min(max_raise, total_raise_reserve)), CFR_dict[i])
                    
@@ -217,16 +234,22 @@ class Player(Bot):
                         my_actions[i] = RaiseAction(raise_amount)
                         commit_cost = board_cont_cost+raise_amount
                         total_raise_reserve -= raise_amount
+                        # classify self action as well
+                        # and update history
+                        self_action = classify_action(raise_amount - opp_pips[i], raise_amount + opp_pips[i] + board_total)
+                        self.history[i] += self_action
                     
                     elif CallAction in legal_actions[i] and raise_amount >=0: 
                         self.raise_count[i] = 0
                         my_actions[i] = CallAction()
                         commit_cost = board_cont_cost #the cost to call is board_cont_cost
+                        self.history[i] += "C"
                     
                     elif CheckAction in legal_actions[i] and raise_amount >=0: #checking is our only valid move here
                         self.raise_count[i] = 0
                         my_actions[i] = CheckAction()
                         commit_cost = 0
+                        self.history[i] += "C"
                     
                     else:
                         self.raise_count[i] = 0
@@ -234,7 +257,12 @@ class Player(Bot):
                         commit_cost = 0
                         # if decide to fold, then the raise reserve could be increased
                         total_raise_reserve += continue_cost[i]
+                        self.history[i] += "F"
 
+        # update street, if we are not assigning
+        if self.prev_street < street and not AssignAction in legal_actions[0]:
+            print(self.history)
+            self.prev_street = street
         return my_actions
 
 if __name__ == '__main__':
