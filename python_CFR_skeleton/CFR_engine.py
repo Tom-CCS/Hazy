@@ -25,12 +25,6 @@ regrets = {0:{}, 1:{}}
 # average strategy profile
 # Denoted S_i(I, a)
 strategy_sum = {0:{}, 1:{}}
-#Phase of the game. "0" denotes pre-flop while "3" denotes post-flop
-STREET_BUCKET = ["0", "3"]
-#Raw Probability of winning: 0 - 0.35(S), 0.35 - 0.5(M1), 0.5 - 0.65(M2), 0.65 - 0.8(L1), 0.8 - 1.0(L2)
-PROB_BUCKET = ["S", "M1", "M2", "L1", "L2"]
-#Opponent Action Types: Check/Call(C), Small Raise(S), Large Raise(L), Double Raise(D)
-OPPO_BUCKET = ["C", "S", "L", "D"]
 #Action Types: Fold(F), Check/Call(C), Small Raise(S), Large Raise(L)
 RAISE_ACTIONS = ["F", "C", "S", "L"]
 #Disable pre-flop all ins
@@ -39,32 +33,45 @@ NO_RAISE_ACTIONS = ["F", "C"]
 #Number of iterations
 ITER = 20000
 
-def getBucket(raw_prob, street, oppo_action):
+def getBucket(raw_prob, street, history):
     '''
     Given the situation on the board, return the bucket(information set I) this situation corresponds to
     Params:
         raw_prob:
         Double, the raw probability of winning.(This will be precomputed to save time)
         street:
-        list of strings. The cards in the street
-        oppo_action:
-        The opponent's action last turn
+        Int, The phase of the game street
+        history:
+        String, The previous actions in the street
     Returns:
         A label for the bucket this situation corresponds to
     '''
     street_label = "0" if street == 0 else "3"
-    if raw_prob < 0.35:
-        prob_label = 'S'
-    elif raw_prob < 0.5:
-        prob_label = 'M1'
-    elif raw_prob < 0.65:
-        prob_label = 'M2'
-    elif raw_prob < 0.8:
-        prob_label = 'L1'
+    if street == 0:
+        prob_label = str(int(raw_prob / 0.07))
     else:
-        prob_label = 'L2'
+        prob_label = str(int(raw_prob / 0.1))
 
-    return street_label + prob_label + oppo_action
+    return street_label + prob_label + history
+
+# Initialize a strategy slot
+# A strategy slot is defined as player -> bucket -> action
+def initialize(player, win_prob, street, history):
+    #initialize strategy array
+    bucket = getBucket(win_prob, street, history)
+    actions[player][bucket] = {}
+    regrets[player][bucket] = {}
+    strategy_sum[player][bucket] = {}
+    # The set of allowed actions
+    action_list = RAISE_ACTIONS
+    if street == 0:
+        action_list = PRE_FLOP_ACTIONS
+    if len(history) >= 3:
+        action_list = NO_RAISE_ACTIONS
+    for action in action_list:
+        actions[player][bucket][action] = 1 / len(action_list)
+        regrets[player][bucket][action] = 0
+        strategy_sum[player][bucket][action] = 0
 
 INFLATION = 1 # 0.5 * the number of chips inflated at the beginning
 STACK = 200 # the number of chips each player has
@@ -107,21 +114,13 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             node_util = [0, 0]
         return node_util
     #compute the action of the opponent
-    #if no such action, do a check
-    if len(street_history) > 0:
-        oppo_action = street_history[-1]
-    else:
-        oppo_action = "C"
-    #detecting double raise
-    if len(street_history) >= 2 and street_history[-2] == "S" and street_history[-1] == "S":
-        oppo_action = "D"
     #extracted precomputed
     win_prob = raw_p[player][street]
     #compute the bucket of the current state
-    bucket = getBucket(win_prob, street, oppo_action)
+    bucket = getBucket(win_prob, street, street_history)
+    if not bucket in actions[player]:
+        initialize(player, win_prob, street, street_history)
     action_prob = copy(actions[player][bucket]) # a map taking each action to its probability
-    # we do not consider >= 4 bets, thus if this happens we merge the raises as checks
-    forced_break = False
     util = {} # the expected util array, mapping each action to the expected util
     node_util = {0:0, 1:0} # the expected util for both players at this point
     for action in action_prob:
@@ -181,31 +180,6 @@ def deal_str(deck, sz):
     A = deck.deal(sz)
     B = [str(card) for card in A]
     return B
-
-# Initialize the various arrays used to store strategy
-def initialize():
-    #initialize strategy array
-    for player in [0,1]:
-        actions[player] = {}
-        regrets[player] = {}
-        for street_type in STREET_BUCKET:
-            for prob_type in PROB_BUCKET:
-                for oppo_act in OPPO_BUCKET:
-                    bucket = street_type + prob_type + oppo_act
-                    actions[player][bucket] = {}
-                    regrets[player][bucket] = {}
-                    strategy_sum[player][bucket] = {}
-                    # The set of allowed actions
-                    action_list = NO_RAISE_ACTIONS
-                    if oppo_act in ['C', 'S']:
-                        if street_type == "0":
-                            action_list = PRE_FLOP_ACTIONS
-                        else:
-                            action_list = RAISE_ACTIONS
-                    for action in action_list:
-                        actions[player][bucket][action] = 1 / len(action_list)
-                        regrets[player][bucket][action] = 0
-                        strategy_sum[player][bucket][action] = 0
 # 
 # Run the CFR algorithm
 # save breakpoints in FILE
@@ -213,9 +187,9 @@ def initialize():
 def run_CFR(FILE, DEST):
     #output file
     f = open(FILE + str(INFLATION) + ".txt", "w")
-    initialize()
     # iterations of CFR
-    for iter in range(ITER):
+    iter = 0
+    while (iter < ITER):
         # shuffle the deck
         deck = eval7.Deck()
         deck.shuffle()
@@ -252,65 +226,61 @@ def run_CFR(FILE, DEST):
         util = CFR(deck, Blind, 0, "", 0, 1, 1, raw_p, winner)
         # Update Strategy
         for player in [0,1]:
-            for street_type in STREET_BUCKET:
-                for prob_type in PROB_BUCKET:
-                    for oppo_act in OPPO_BUCKET:
-                        bucket = street_type + prob_type + oppo_act
-                        viable_actions = list(actions[player][bucket].keys())
-                        strategy = {}
-                        # Compute normalizing sum
-                        normalizing_sum = 0
-                        for action in viable_actions:
-                            strategy[action] = max(regrets[player][bucket][action], 0)
-                            normalizing_sum += strategy[action]
-                        # Compute the new strategy according to pg 11 of cfr.pdf
-                        for action in viable_actions:
-                            if normalizing_sum > 0:
-                                strategy[action] /= normalizing_sum
-                            else:
-                                strategy[action] = 1 / len(viable_actions)
-                        actions[player][bucket] = strategy
+            for bucket in actions[player]:
+                viable_actions = list(actions[player][bucket].keys())
+                strategy = {}
+                # Compute normalizing sum
+                normalizing_sum = 0
+                for action in viable_actions:
+                    strategy[action] = max(regrets[player][bucket][action], 0)
+                    normalizing_sum += strategy[action]
+                # Compute the new strategy according to pg 11 of cfr.pdf
+                for action in viable_actions:
+                    if normalizing_sum > 0:
+                        strategy[action] /= normalizing_sum
+                    else:
+                        strategy[action] = 1 / len(viable_actions)
+                actions[player][bucket] = strategy
         # dumping some info
-        print(actions)
-        print(regrets)
-        print(iter)
-        print("WINNER:", winner)
-        print("UTIL:", util)
-        print("NUMBER OF CALLS:",CFR_calls)
+        if iter % 10 == 0:
+            print(actions)
+            print(regrets)
+            print(iter)
+            print("WINNER:", winner)
+            print("UTIL:", util)
+            print("NUMBER OF CALLS:",CFR_calls)
 
-        print(hands, street_cards)
+            print(hands, street_cards)
         # compute average strategy every 500 iters
         if iter % 500 == 0:
             average_strategy = {0:{}, 1:{}}
             for player in [0,1]:
-                for street_type in STREET_BUCKET:
-                    for prob_type in PROB_BUCKET:
-                        for oppo_act in OPPO_BUCKET:
-                            bucket = street_type + prob_type + oppo_act
-                            viable_actions = list(actions[player][bucket].keys())
-                            avg_strategy = {}
-                            # Compute normalizing sum
-                            normalizing_sum = 0
-                            for action in viable_actions:
-                                normalizing_sum += strategy_sum[player][bucket][action]
-                            # We disable any action unless it has a > 0.1 prob of triggering. 
-                            # I hope this would be helpful for all-ins
-                            for action in viable_actions:
-                                if strategy_sum[player][bucket][action] < 0.1 * normalizing_sum:
-                                    normalizing_sum -= strategy_sum[player][bucket][action]
-                                    strategy_sum[player][bucket][action] = 0
-                            # Compute the new strategy according to pg 11 of cfr.pdf
-                            for action in viable_actions:
-                                if normalizing_sum > 0:
-                                    avg_strategy[action] = strategy_sum[player][bucket][action] / normalizing_sum
-                                else:
-                                    avg_strategy[action]  = 1 / len(viable_actions)
-                            average_strategy[player][bucket] = avg_strategy
+                for bucket in actions[player]:
+                    viable_actions = list(actions[player][bucket].keys())
+                    avg_strategy = {}
+                    # Compute normalizing sum
+                    normalizing_sum = 0
+                    for action in viable_actions:
+                        normalizing_sum += strategy_sum[player][bucket][action]
+                    # We disable any action unless it has a > 0.1 prob of triggering. 
+                    # I hope this would be helpful for all-ins
+                    for action in viable_actions:
+                        if strategy_sum[player][bucket][action] < 0.1 * normalizing_sum:
+                            normalizing_sum -= strategy_sum[player][bucket][action]
+                            strategy_sum[player][bucket][action] = 0
+                    # Compute the new strategy according to pg 11 of cfr.pdf
+                    for action in viable_actions:
+                        if normalizing_sum > 0:
+                            avg_strategy[action] = strategy_sum[player][bucket][action] / normalizing_sum
+                        else:
+                            avg_strategy[action]  = 1 / len(viable_actions)
+                    average_strategy[player][bucket] = avg_strategy
             # write to file
             f.write(str(average_strategy) + "\n\n")
         # if training is finished, write to destination
         if iter == ITER - 1:   
             DEST.write(str(average_strategy) + "\n")
+        iter += 1
     f.close()
 
 if __name__ == '__main__':
