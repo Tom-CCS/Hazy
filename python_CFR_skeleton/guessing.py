@@ -4,14 +4,16 @@ Created on Sun Jan 10 14:06:03 2021
 
 @author: 1
 """
-
+import numpy as np
+import random
 class Guessing:
-    def __init__(self,three,ours):
+    def __init__(self,three,ours,preflopRound):
         '''
         Initial three cards on the board
         Parameters: 
         three: a list of 3 strs, first three cards for guessing.
         ours: our cards, a list of 2 strs
+        preflopRound: int, indicates how many rounds happened during preflop.
         Update the class.
         '''
         self.singles=set()
@@ -30,11 +32,11 @@ class Guessing:
         
         # A card can be in one or two sets of single or potentialSiggles,
         # But never be in strongSingles and another singles
-        self.majorSuit = None
+        self.majorSuit = ""
         # It is defined as the most likely suit (str) to have a flush.
         # 3, 4: suit of two
         # 5: suit of three of the same suit
-        self.majorSuit2=None
+        self.majorSuit2=""
         # If there are four cards on, ans the suits are 2+2
         self.doubles = set()
         # The pairs of cards that can potentially make a good hand.
@@ -53,11 +55,20 @@ class Guessing:
         self.leftSuits={"c":13, "d":13, "h":13, "s":13}
         # Count hou many cards for a certain ranks / suits have
         self.rank2num={}
+        self.guessing={}
+        # self.rise=set()
+        self.suitPrivilage=0
+        # If there are many suit, and the person raised, we may give the suit more score
         num=2
         for i in "23456789TJQKA":
             self.rank2num[i]=num
             self.leftRanks[num]=4
+            self.guessing[num]=(preflopRound-1)*(num-10)*(num>10)+1
             num+=1
+        self.restCards={i+j for i in "23456789TJQKA" for j in "cdhs"}
+        # A set of rest cards in order to give prob easier
+        for card in three+ours:
+            self.restCards.remove(card)
         self.initialGuess()
         
     def initialGuess(self):
@@ -153,49 +164,53 @@ class Guessing:
     def update3To4(self,fourth):
         '''
         Parameters: fourth : a str, the fourth card
-        Does not return anything.
+        #Return the rising .
         Update the fields in this class
         NOTE: if okay, report the change
+        NOTE2: for robustness, if it is updated, we will not update it again.
         '''
-        self.state+=1
-        for card in self.ours:
-            self.leftRanks[self.rank2num[fourth[0]]]-=1
+        if self.state==3:
+            self.restCards.remove(fourth)
+            self.common.add(fourth)
+            self.state=4
             self.leftSuits[fourth[1]]-=1
-        # rising=set()
-        
-        # update for suits
-        suit=fourth[1]
-        if suit not in self.suits.keys():
-            self.suits[suit]=1
-        else:
-            self.suits[suit]+=1
-        if self.suits[suit]==2:
-            # 2 cases, 2+2 or 1+1+2
-            if 1 in self.suits.values:
-                self.majorSuit=suit
-            else:self.majorSuit2=suit
-        
-        # update for ranks
-        rank=self.rank2num[fourth[0]]
-        self.leftRanks[rank]-=1
-        if rank not in self.singles.keys():
-            if rank!=14:
-                self.strongSingles.add(rank) # only one pair
-            else: self.singles.add(rank)
-        else: # at least 3 of a kind
-            self.singles.remove(rank)
-            self.strongSingles.add(rank)
-        # if self.ranks[rank]==2:
-        #    rise.add(rank)
-        
-        # take care of straights
-        smallStraight, bigStraight=self.findStraight()
-        # for rank in bigStraight:
-        #     if rank not in strongSingles:
-        #         rise.add(rank)
-        self.strongSingles|=bigStraight
-        self.potentialSingles|=smallStraight
-        self.potentialSingles.difference_update(self.strongSingles)
+            # rising=set()
+            
+            # update for suits
+            suit=fourth[1]
+            if suit not in self.suits.keys():
+                self.suits[suit]=1
+            else:
+                self.suits[suit]+=1
+            if self.suits[suit]==2:
+                # 2 cases, 2+2 or 1+1+2
+                if 1 in self.suits.values():
+                    self.majorSuit=suit
+                else:self.majorSuit2=suit
+            
+            # update for ranks
+            rank=self.rank2num[fourth[0]]
+            self.leftRanks[rank]-=1
+            if rank not in self.ranks.keys():
+                self.ranks[rank]=1
+                if rank==14:
+                    self.strongSingles.add(rank) # only one pair
+                else: self.singles.add(rank)
+            else: # at least 3 of a kind
+                self.ranks[rank]+=1
+                if rank in self.singles: self.singles.remove(rank)
+                self.strongSingles.add(rank)
+            # if self.ranks[rank]==2:
+            #    rise.add(rank)
+            
+            # take care of straights
+            smallStraight, bigStraight=self.findStraight()
+            # for rank in bigStraight:
+            #     if rank not in strongSingles:
+            #         rise.add(rank)
+            self.strongSingles|=bigStraight
+            self.potentialSingles|=smallStraight
+            self.potentialSingles.difference_update(self.strongSingles)
     
     def update4To5(self,fifth):
         '''
@@ -203,58 +218,114 @@ class Guessing:
         Does not return anything.
         Update the fields in the class
         NOTE: if okay, report the change.
+        NOTE2: for robustness, if it is updated, we will not update it again.
         '''
-        self.state+=1
-        suit=fifth[1]
-        # rise=set()
+        if self.state==4:
+            self.restCards.remove(fifth)
+            self.common.add(fifth)
+            self.state=5
+            suit=fifth[1]
+            # rise=set()
+            
+            # update for suits
+            if suit not in self.suits.keys():
+                self.suits[suit]=1
+            else:
+                self.suits[suit]+=1
+            if 3 not in self.suits.values():
+                self.majorSuit, self.majorSuit2="", ""
+            elif self.suits[suit]==3:
+                self.majorSuit=suit
+                self.majorSuit2=""
+            
+            # update for ranks
+            rank=self.rank2num[fifth[0]]
+            self.leftRanks[rank]-=1
+            if rank not in self.ranks.keys():
+                self.ranks[rank]=1
+                if rank==14:
+                    self.strongSingles.add(rank) # only one pair
+                else: self.singles.add(rank)
+            else: # at least 3 of a kind
+                self.ranks[rank]+=1
+                if rank in self.singles: self.singles.remove(rank)
+                self.strongSingles.add(rank)
+            # if self.ranks[rank]==2:
+            #    rise.add(rank)
+            
+            # we will not care for the XXXYY case in the common card. (X>Y)
+            # In this case, Y is not strong
+            # It is really rare, like 1.08 occurrences in 500 games
+            
+            # take care of straights
+            bigStraight=self.findStraight()[1]
+            # for rank in bigStraight:
+            #     if rank not in strongSingles:
+            #         rise.add(rank)
+            self.strongSingles|=bigStraight
         
-        # update for suits
-        if suit not in self.suits.keys():
-            self.suits[suit]=1
-        else:
-            self.suits[suit]+=1
-        if 3 not in self.suits.values():
-            self.majorSuit, self.majorSuit2=None,None
-        elif self.suits[suit]==3:
-            self.majorSuit=suit
-            self.majorSuit2=None
-        
-        # update for ranks
-        rank=self.rank2num[fifth[0]]
-        self.leftRanks[rank]-=1
-        if rank not in self.singles.keys():
-            if rank!=14:
-                self.strongSingles.add(rank) # only one pair
-            else: self.singles.add(rank)
-        else: # at least 3 of a kind
-            self.singles.remove(rank)
-            self.strongSingles.add(rank)
-        # if self.ranks[rank]==2:
-        #    rise.add(rank)
-        
-        # we will not care for the XXXYY case in the common card. (X>Y)
-        # In this case, Y is not strong
-        # It is really rare, like 1.08 occurrences in 500 games
-        
-        # take care of straights
-        bigStraight=self.findStraight()[1]
-        # for rank in bigStraight:
-        #     if rank not in strongSingles:
-        #         rise.add(rank)
-        self.strongSingles|=bigStraight
-        
-    def takeAction(self,action):
+    def takeAction(self, continueCost, potTotal):
         '''
         Parameters:
-        action : int, indicates the opponent's action.
-        It is either a positive number (raise, the amount of)
-        Or 0 (ckeck/call)
-        Or -1 for our hand first
+        continueCost: an integer the cost for continue the game
+        potTotal: the total pot
+        Return: nothing
+        only update self.guesssing
         '''
-        pass
+        # Our first hand, we do nothing
+        if continueCost>0:
+            state = self.state
+            goodCardRatio = continueCost / (potTotal - continueCost)
+            TGCR = max(goodCardRatio, 1)# short for truncated good card ratio.
+            for i in self.singles:
+                # It will have a lager prob to have a larger 
+                self.guessing[i]*=((1+(i/14))*(state/3))
+            for i in self.potentialSingles:
+                self.guessing[i]*=(10-state)/5
+            for i in self.strongSingles:
+                self.guessing[i]*=(2+TGCR)*state/2
+            if self.majorSuit!="":
+                if self.suits[self.majorSuit]==3:
+                    self.suitPrivilage+=0.1*TGCR
+                elif self.suits[self.majorSuit]==4:
+                    self.suitPrivilage+=0.25*TGCR
+            
     
-    def outputGuessing(self):
+    def outputGuessing(self,pairs):
         '''
+        Parameters: pairs: the number of the pairs to be output.
         output some sort of the guessing for the bot
+        output the probability for each card (rank)
         '''
-        pass
+        output=[]
+        cards=[]
+        prob=[]
+        for card in self.restCards:
+            try:
+                rank=self.rank2num[card[0]]
+                rank_prob=self.guessing[rank]/self.leftRanks[rank]
+                card_prob=rank_prob*(1+(card[1]==self.majorSuit)*(self.suitPrivilage))
+                prob.append(card_prob)
+                cards.append(card)
+            except:
+                pass
+        cards=np.array(cards)
+        s=sum(prob)
+        prob=np.array(prob)/s
+        if self.state<5:
+            for i in range (pairs):
+                while True:
+                    choice=np.random.choice(cards,2,replace=True,p=prob)
+                    if choice[0]!=choice[1]:
+                        common=set(random.sample(self.restCards-set(choice),5-self.state))
+                        output.append([list(choice),common])
+                        break
+            return output
+        else:
+            for i in range (pairs):
+                while True:
+                    choice=np.random.choice(cards,2,replace=True,p=prob)
+                    if choice[0]!=choice[1]:
+                        output.append(list(choice))
+                        break
+            return output
