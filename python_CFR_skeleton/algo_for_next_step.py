@@ -1,6 +1,7 @@
 import eval7
 import random
 from CFR_engine import getBucket
+
 def classify_action(raise_amount, current_pot):
     pre_raise_pot = current_pot - raise_amount
     if (raise_amount < pre_raise_pot * 0.33):
@@ -37,7 +38,6 @@ def determine_action(player, street, win_prob, history, current_pot, my_pot, con
     '''
     bucket = getBucket(win_prob, street, history)
     if not bucket in CFR_dict[player]:
-        print("MISS!!", bucket)
         return -1
     action_choices = CFR_dict[player][bucket]
     # choose an action based on the recommendation of the CFR

@@ -1,7 +1,6 @@
 import eval7
-import numpy as np
+import random
 import json
-import guessing
 """
 Handle Probability Computation
 """
@@ -85,40 +84,6 @@ def calc_prob(cards, common_cards, guessing_opponent=None):
             score+=win_or_lose(Card_cards, common_cards, opponent_hand=[], rest=deck)
         return score/(2*iteration)
 
-def calcBiasedProb(guess):
-    '''
-    Parameters:
-        guess: A Guessing type
-        recorded a LOT of information, include our hands, common cards, the 
-        guessed prob for the each card, etc.
-    Return: the conditional probability of winning. Assume each of the unseen 
-    cards are distibuted with biased according to the rank.
-    '''
-    common=guess.common
-    ours=guess.ours
-    ourCard=[eval7.Card(card) for card in ours]
-    pairs=100
-    guessingSets=guess.outputGuessing(pairs)
-    score=0
-    if guess.state<5:
-        for cardSet in guessingSets:
-            commonCard=[eval7.Card(card) for card in common|cardSet[1]]
-            opponentCard=[eval7.Card(card) for card in cardSet[0]]
-            ourScore=eval7.evaluate(ourCard+commonCard)
-            oppScore=eval7.evaluate(opponentCard+commonCard)
-            score+=int(ourScore>oppScore)+int(ourScore>=oppScore)
-        return score/(pairs*2)
-    else:
-        commonCard=[eval7.Card(card) for card in common]
-        ourScore=eval7.evaluate(ourCard+commonCard)
-        for cardSet in guessingSets:
-            opponentCard=[eval7.Card(card) for card in cardSet]
-            oppScore=eval7.evaluate(opponentCard+commonCard)
-            score+=int(ourScore>oppScore)+int(ourScore>=oppScore)
-        return score/(pairs*2)
-            
-        
-
 def win_or_lose(our_hand, current_common, opponent_hand=[], rest=None):
     '''
     Parameters:
@@ -135,14 +100,12 @@ def win_or_lose(our_hand, current_common, opponent_hand=[], rest=None):
             Indicates the rest of the card. Default is None (to be calculated).
     Return: An integer to indicate the total wins/loses divided by n.
     '''
-    if rest==None:
-        rest=eval7.Deck()
-        for card in our_hand+opponent_hand+current_common:
-            rest.cards.remove(card)
-    rest.shuffle() #make sure our samples are random
     if len(opponent_hand)==0:
-        
-        
+        if rest==None:
+            rest=eval7.Deck()
+            for card in our_hand+opponent_hand+current_common:
+                rest.cards.remove(card)
+        rest.shuffle() #make sure our samples are random 
         _COMM = 5-len(current_common) #the number of cards we need to draw
         _OPP = 2-len(opponent_hand)
     

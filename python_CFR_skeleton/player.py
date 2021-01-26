@@ -10,7 +10,6 @@ from skeleton.runner import parse_args, run_bot
 from probability import raw_prob, calc_prob
 from algo_for_next_step import determine_action, classify_action
 from allocate import allocate
-from behaviour_study import is_all_in
 
 import eval7
 import random
@@ -141,10 +140,9 @@ class Player(Bot):
         """
         Update the self.history array to reflect the current street history
         """
-        big_blind = bool(self.player)
         if street > self.prev_street:
             # a new street
-            if not big_blind:
+            if (self.player == 1 and street != 0) or (self.player == 0 and street == 0):
                 # in this case we go first
                 self.history[board] = ""
             else:
@@ -153,8 +151,8 @@ class Player(Bot):
             # the same street
             self.history[board] += oppo_action_bucket
             # if round too long, forget previous actions
-            if len(self.history[board]) > 3:
-                self.history[board] = self.history[board][-3:]
+            if len(self.history[board]) > 2:
+                self.history[board] = self.history[board][-2:]
 
 
     def get_actions(self, game_state, round_state, active):
@@ -221,15 +219,16 @@ class Player(Bot):
                     for card in board_cards[i]:
                         if card!='':
                             seen_cards.append(eval7.Card(card))
+                    
                     win_prob=calc_prob(self.board_allocations[i], seen_cards)
+
 
                     # apply CFR
                     raise_amount = determine_action(self.player, street, win_prob, self.history[i],
                                         pot_total, my_pips[i], board_cont_cost, 
                                         (min_raise, min(max_raise, total_raise_reserve)), CFR_dict[i])
-                   
+                
                     if RaiseAction in legal_actions[i] and raise_amount > 0: #raise if we want and if we can afford it
-                        self.raise_count[i] += 1
                         my_actions[i] = RaiseAction(raise_amount)
                         commit_cost = board_cont_cost+raise_amount
                         total_raise_reserve -= raise_amount
@@ -239,24 +238,25 @@ class Player(Bot):
                         self.history[i] += self_action
                     
                     elif CallAction in legal_actions[i] and raise_amount >=0: 
-                        self.raise_count[i] = 0
                         my_actions[i] = CallAction()
                         commit_cost = board_cont_cost #the cost to call is board_cont_cost
                         self.history[i] += "C"
                     
                     elif CheckAction in legal_actions[i] and raise_amount >=0: #checking is our only valid move here
-                        self.raise_count[i] = 0
                         my_actions[i] = CheckAction()
                         commit_cost = 0
                         self.history[i] += "C"
                     
                     else:
-                        self.raise_count[i] = 0
-                        my_actions[i] = FoldAction()
-                        commit_cost = 0
-                        # if decide to fold, then the raise reserve could be increased
-                        total_raise_reserve += continue_cost[i]
-                        self.history[i] += "F"
+                        if FoldAction in legal_actions[i]:
+                            # if decide to fold, then the raise reserve could be increased
+                            my_actions[i] = FoldAction()
+                            total_raise_reserve += board_cont_cost
+                            self.history[i] += "F"
+                        else:
+                            my_actions[i] = CheckAction()
+                            self.history[i] += "C"
+
 
         # update street, if we are not assigning
         if self.prev_street < street and not AssignAction in legal_actions[0]:

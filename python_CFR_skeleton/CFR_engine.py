@@ -31,7 +31,7 @@ RAISE_ACTIONS = ["F", "C", "S", "L"]
 PRE_FLOP_ACTIONS = ["F", "C", "S"]
 NO_RAISE_ACTIONS = ["F", "C"]
 #Number of iterations
-ITER = 20000
+ITER = 3000
 
 def getBucket(raw_prob, street, history):
     '''
@@ -49,10 +49,7 @@ def getBucket(raw_prob, street, history):
     if len(history) >= 2:
         history = history[-2:]
     street_label = "0" if street == 0 else "3"
-    if street == 0:
-        prob_label = str(int(raw_prob / 0.07))
-    else:
-        prob_label = str(int(raw_prob / 0.1))
+    prob_label = str(int(raw_prob / 0.1))
 
     return street_label + prob_label + history
 
@@ -68,7 +65,7 @@ def initialize(player, win_prob, street, history):
     action_list = RAISE_ACTIONS
     if street == 0:
         action_list = PRE_FLOP_ACTIONS
-    if len(history) >= 3:
+    if (len(history) >= 1 and history[-1] == "L") or (len(history) >= 2 and history[-2:] == "SS"):
         action_list = NO_RAISE_ACTIONS
     for action in action_list:
         actions[player][bucket][action] = 1 / len(action_list)
@@ -142,7 +139,7 @@ def CFR(deck, pots, street, street_history, button, p1, p2, raw_p, winner):
             if len(street_history) >= 1:
                 # In this case, advances to the next street
                 next_street = street + 1 if street != 0 else 3
-                util["C"] = CFR(deck, new_pots, next_street, "", 0, next_prob[0], next_prob[1], raw_p, winner)
+                util["C"] = CFR(deck, new_pots, next_street, "", 1, next_prob[0], next_prob[1], raw_p, winner)
             # the opponent has not moved
             else:
                 # give control to the opponent
